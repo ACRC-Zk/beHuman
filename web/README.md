@@ -1,36 +1,63 @@
 # web · Frontend (React + Vite + TypeScript)
 
-La app de beHuman. Guía al usuario por el flujo: verificar identidad → generar la prueba ZK
-en el dispositivo → registrarse on-chain en Stellar. Consume `@behuman/sdk`.
+La app de beHuman. Landing + flujo de verificación (en progreso). Consume `@behuman/sdk`.
 
-> 📐 Pasos del usuario en la vault: `Flujo de KYC`. Wallets: ver `Stellar Wallets Kit`
-> en `09 - Tools/Recursos ZK & Privacy en Stellar`.
+> 📐 Diseño: inspiración [zk.me](https://www.zk.me/) — ver **`web/docs/DESIGN.md`**
+> 📐 Flujo KYC en vault: `Flujo de KYC`
+
+## Documentación
+
+Toda la documentación del frontend vive en **`web/docs/`**:
+
+- [Índice](./docs/README.md)
+- [Design system](./docs/DESIGN.md)
+- [Copy / contenido](./docs/COPY.md)
+- [Componentes](./docs/COMPONENTS.md)
+- [Implementación](./docs/IMPLEMENTATION.md)
 
 ## Desarrollo
 
 ```bash
 npm install          # desde la raíz del monorepo
-npm run dev          # o: npm run dev --workspace web
+npm run dev          # o: npm run dev --workspace @behuman/web
 ```
 
 Abre http://localhost:5173
+
+## Rama de trabajo
+
+Frontend: `feat/web-onboarding` (una feature = una rama).
 
 ## Estructura
 
 ```text
 web/
+├── docs/                 # documentación (design, componentes, changelog)
 ├── index.html
 ├── vite.config.ts
 └── src/
-    ├── main.tsx        # entry
-    ├── App.tsx         # pantalla inicial (scaffolding)
-    ├── App.css
-    └── index.css
+    ├── content/          # copy centralizado (site.ts)
+    ├── components/
+    │   ├── hero/         # HeroSection, HeroBackground (canvas)
+    │   ├── layout/       # SiteNav, SiteFooter
+    │   ├── sections/     # HowItWorks, Stats, Compare
+    │   └── ui/           # Button, Badge
+    ├── hooks/            # pointer spring/trail, reduced motion
+    ├── styles/           # tokens.css, global.css
+    ├── test/             # setup vitest
+    ├── App.tsx
+    └── main.tsx
 ```
 
-## Próximos pasos (a desarrollar)
+## Scripts
 
-- Conexión de wallet (Stellar Wallets Kit).
-- Flujo de onboarding con el issuer mock.
-- Generación de prueba en el navegador (WASM, vía `@behuman/sdk`).
-- Llamada a `verify_and_register` y estado de verificación.
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Vite dev server |
+| `npm run build` | typecheck + bundle |
+| `npm run test` | Vitest |
+| `npm run lint` | ESLint |
+
+## Próximos pasos
+
+Ver checklist en [docs/IMPLEMENTATION.md](./docs/IMPLEMENTATION.md).

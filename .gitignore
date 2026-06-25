@@ -1,4 +1,5 @@
 # --- Node / JS ---
+.venv/
 node_modules/
 dist/
 build/
@@ -30,6 +31,8 @@ witness.wtns
 
 # --- Coordinación entre agentes (no es código del producto) ---
 .comms/
+.cursor/
+.atl/
 
 # --- SO / editor ---
 .DS_Store

@@ -1,0 +1,123 @@
+.compare {
+  background: var(--color-bg);
+}
+
+.compare__table {
+  margin-top: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.compare__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.compare__row:last-child {
+  border-bottom: none;
+}
+
+.compare__row--head {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.compare__cell {
+  padding: 1rem 1.15rem;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  border-right: 1px solid var(--color-border);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.compare__cell:last-child {
+  border-right: none;
+}
+
+.compare__row--head .compare__cell {
+  color: var(--color-text);
+}
+
+.compare__cell--aspect {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.compare__cell--bad {
+  color: var(--color-text-dim);
+}
+
+.compare__cell--good {
+  color: var(--color-accent-bright);
+}
+
+@media (max-width: 767px) {
+  .compare__table {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    background: transparent;
+    border: none;
+    overflow: visible;
+  }
+
+  .compare__row--head {
+    display: none;
+  }
+
+  .compare__row:not(.compare__row--head) {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    padding: 1.15rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .compare__cell {
+    padding: 0;
+    border: none;
+    font-size: 0.88rem;
+  }
+
+  .compare__cell--aspect {
+    font-size: 1rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 0.25rem;
+  }
+
+  .compare__cell--bad::before,
+  .compare__cell--good::before {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  .compare__cell--bad::before {
+    content: "Tradicional";
+    color: var(--color-text-dim);
+  }
+
+  .compare__cell--good::before {
+    content: "beHuman";
+    color: var(--color-accent);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .compare__cell {
+    padding: 0.85rem;
+    font-size: 0.82rem;
+  }
+}

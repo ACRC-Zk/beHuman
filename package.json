@@ -15,7 +15,11 @@
     "dev": "npm run dev --workspace web",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "test:tdd": "npm run test --workspace @behuman/web && npm run test --workspace @behuman/curation",
+    "typecheck:tdd": "npm run typecheck --workspace @behuman/web && npm run typecheck --workspace @behuman/curation",
+    "setup:hooks": "bash scripts/setup-pre-commit.sh",
+    "pre-commit": "npm run typecheck:tdd && npm run lint --workspace @behuman/web && npm run test:tdd"
   },
   "engines": {
     "node": ">=20"

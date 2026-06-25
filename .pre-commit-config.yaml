@@ -1,0 +1,34 @@
+# beHuman — quality gates locales (scope TDD: web + platform/curation).
+# Instalar: npm run setup:hooks
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=512"]
+
+  - repo: local
+    hooks:
+      - id: tdd-typecheck
+        name: typecheck (web + curation)
+        entry: npm run typecheck:tdd
+        language: system
+        pass_filenames: false
+
+      - id: web-lint
+        name: eslint (web)
+        entry: npm run lint --workspace @behuman/web
+        language: system
+        pass_filenames: false
+
+      - id: tdd-test
+        name: test (web + curation)
+        entry: npm run test:tdd
+        language: system
+        pass_filenames: false

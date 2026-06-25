@@ -1,8 +1,8 @@
 # beHuman — atajos de desarrollo del monorepo.
 # Scaffolding: muchos targets son stubs hasta que implementemos cada parte.
 
-.PHONY: help install web-dev contracts-build circuit-compile circuit-setup \
-        circuit-prove deploy e2e test clean
+.PHONY: help install setup-hooks web-dev contracts-build circuit-compile circuit-setup \
+        circuit-prove deploy e2e test test-tdd pre-commit clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -10,6 +10,9 @@ help: ## Muestra esta ayuda
 
 install: ## Instala los workspaces JS (web, packages/*, issuer, api, curation)
 	npm install
+
+setup-hooks: ## Instala pre-commit en .venv e registra git hooks
+	bash scripts/setup-pre-commit.sh
 
 web-dev: ## Levanta el frontend React (web/)
 	npm run dev --workspace web
@@ -35,6 +38,12 @@ e2e: ## Corre la demo end-to-end (lo que graba el video)
 test: ## Corre los tests de todos los componentes
 	npm run test --workspaces --if-present
 	cargo test
+
+test-tdd: ## Tests del scope TDD (web + curation)
+	npm run test:tdd
+
+pre-commit: ## Quality gate local (typecheck + lint web + test:tdd)
+	npm run pre-commit
 
 clean: ## Limpia artefactos de build
 	rm -rf node_modules **/node_modules **/dist target identity/circuits/build

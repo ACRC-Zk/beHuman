@@ -1,0 +1,73 @@
+/**
+ * Design tokens — paleta blanco/negro + acento naranja.
+ * Ver web/docs/DESIGN.md
+ */
+:root {
+  /* Base monochrome */
+  --color-bg-deep: #000000;
+  --color-bg: #0a0a0a;
+  --color-bg-elevated: #141414;
+  --color-bg-glass: rgba(10, 10, 10, 0.78);
+
+  /* Neutrals */
+  --color-neutral-900: #171717;
+  --color-neutral-800: #262626;
+  --color-neutral-700: #404040;
+  --color-neutral-600: #525252;
+
+  /* Orange accent */
+  --color-accent: #f97316;
+  --color-accent-bright: #fb923c;
+  --color-accent-soft: #fdba74;
+  --color-accent-muted: rgba(249, 115, 22, 0.35);
+  --color-accent-rgb: 249, 115, 22;
+  --color-accent-subtle: rgba(249, 115, 22, 0.12);
+  --color-accent-border: rgba(249, 115, 22, 0.55);
+  --color-accent-glow: rgba(249, 115, 22, 0.22);
+
+  /* Text */
+  --color-text: #ffffff;
+  --color-text-muted: #a3a3a3;
+  --color-text-dim: rgba(163, 163, 163, 0.75);
+
+  /* Borders & glass */
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.2);
+  --glass-blur: 16px;
+
+  /* Breakpoints (mobile-first) */
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1100px;
+
+  /* Safe areas */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Typography */
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Spacing */
+  --space-section: clamp(4rem, 10vw, 7rem);
+  --space-gutter: clamp(1rem, 4vw, 2rem);
+  --content-max: 72rem;
+
+  /* Radii */
+  --radius-pill: 9999px;
+  --radius-lg: 1.25rem;
+  --radius-md: 0.75rem;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 180ms;
+  --duration-normal: 320ms;
+  --spring-strength: 0.08;
+
+  /* Hero glow (canvas lee estos valores vía getComputedStyle) */
+  --hero-glow-primary: rgba(249, 115, 22, 0.32);
+  --hero-glow-secondary: rgba(255, 255, 255, 0.06);
+  --hero-glow-tertiary: rgba(249, 115, 22, 0.1);
+  --hero-dot-color: rgba(255, 255, 255, 0.07);
+}

@@ -1,0 +1,34 @@
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  contain: paint;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-bg__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-bg__grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--hero-dot-color) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.85;
+  will-change: transform;
+}
+
+.hero-bg__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 40%,
+    transparent 0%,
+    var(--color-bg-deep) 75%
+  );
+}
