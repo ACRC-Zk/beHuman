@@ -1,32 +1,23 @@
 import "./App.css";
+import { KycFlow } from "./kyc/KycFlow";
 
-// beHuman — Frontend (scaffolding). El flujo real se implementa más adelante.
-// 📐 Pasos del usuario en la vault: `Flujo de KYC`.
+// beHuman — Frontend. Capa 1: gate de identidad (DNI + cara) en vivo.
+// 📐 Pasos del usuario en la vault: `Flujo de KYC` · `Spec — Matcher DNI + Selfie`.
 
 function App() {
   return (
     <main className="app">
       <header className="app__header">
         <h1>beHuman</h1>
-        <p className="app__tagline">KYC con Zero-Knowledge sobre Stellar</p>
+        <p className="app__tagline">
+          Probá que sos una persona <strong>real y única</strong> sin revelar quién sos
+        </p>
       </header>
 
-      <section className="app__card">
-        <p>
-          Probá que sos una persona <strong>real y única</strong> sin revelar quién sos.
-        </p>
-        <ol className="app__steps">
-          <li>Verificá tu identidad con el issuer (una vez)</li>
-          <li>Generá tu prueba ZK en este dispositivo</li>
-          <li>Registrate on-chain en Stellar — sin exponer tus datos</li>
-        </ol>
-        <button type="button" disabled>
-          Comenzar (próximamente)
-        </button>
-      </section>
+      <KycFlow />
 
       <footer className="app__footer">
-        scaffolding · ver <code>docs/</code> y la vault de Obsidian
+        demo testnet · el matcher es de prueba (no RENAPER) · cero PII on-chain
       </footer>
     </main>
   );

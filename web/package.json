@@ -11,7 +11,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@behuman/sdk": "*",
+    "@behuman/shared": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
