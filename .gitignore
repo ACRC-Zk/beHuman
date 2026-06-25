@@ -55,3 +55,7 @@ Thumbs.db
 
 # --- Deploy local (ids + secretos efímeros de testnet) ---
 /.deploy/
+
+# --- tesseract.js: datos de idioma (se descargan solos) ---
+**/*.traineddata
+**/*.traineddata.gz
