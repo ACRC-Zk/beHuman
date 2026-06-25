@@ -7,6 +7,7 @@ export interface FeedItem {
   username: string;
   content: string;
   contentHash: string;
+  txHash: string;
   ts: number;
 }
 
@@ -18,11 +19,16 @@ export async function setProfile(platformId: string, username: string): Promise<
   });
 }
 
-export async function postContent(platformId: string, content: string, contentHash: string): Promise<void> {
+export async function postContent(
+  platformId: string,
+  content: string,
+  contentHash: string,
+  txHash: string,
+): Promise<void> {
   await fetch(`${BASE}/content`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ platformId, content, contentHash }),
+    body: JSON.stringify({ platformId, content, contentHash, txHash }),
   });
 }
 

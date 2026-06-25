@@ -13,6 +13,8 @@ import { OPINION_BOARD_CONTRACT_ID } from "./stellar2";
 const DEFAULT_TWEET =
   "Para mí el asado argentino es lo máximo: bife de chorizo, achuras y un buen Malbec. 🇦🇷🥩";
 
+const txUrl = (hash: string) => `https://stellar.expert/explorer/testnet/tx/${hash}`;
+
 export function Platform({ onBack }: { onBack: () => void }) {
   const [cred] = useState<StoredCredential | null>(() => loadAnyCredential());
   const [platformId, setPlatformId] = useState<string | null>(null); // hex
@@ -23,6 +25,7 @@ export function Platform({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [eph, setEph] = useState<StellarSdk.Keypair | null>(null);
+  const [lastTx, setLastTx] = useState<string | null>(null);
 
   useEffect(() => {
     getFeed().then(setFeed).catch(() => {});
@@ -70,10 +73,11 @@ export function Platform({ onBack }: { onBack: () => void }) {
       const p = await generatePlatformProof(cred, ch);
       setBusy("Anclando on-chain con la cuenta efímera…");
       const kp = await ephemeral();
-      await postTweet(kp, p);
+      const txHash = await postTweet(kp, p);
+      setLastTx(txHash);
       setBusy("Guardando contenido off-chain…");
       if (username) await setProfile(platformId, username);
-      await postContent(platformId, tweet, ch);
+      await postContent(platformId, tweet, ch, txHash);
       setFeed(await getFeed());
       setBusy(null);
     } catch (e) {
@@ -136,6 +140,16 @@ export function Platform({ onBack }: { onBack: () => void }) {
 
       {busy && <p>⏳ {busy}</p>}
       {error && <p style={{ color: "#c5221f" }}>Error: {error}</p>}
+      {lastTx && (
+        <p style={{ color: "#137333" }}>
+          ✅ Publicado y anclado on-chain.{" "}
+          <a href={txUrl(lastTx)} target="_blank" rel="noreferrer">Ver la transacción</a>
+          <br />
+          <span style={{ fontSize: "0.85em", opacity: 0.8 }}>
+            Firmada por una cuenta efímera (no tu wallet del KYC): es anónima.
+          </span>
+        </p>
+      )}
 
       <hr />
       <h3>Feed</h3>
@@ -145,6 +159,11 @@ export function Platform({ onBack }: { onBack: () => void }) {
           <strong>{f.username || "anónimo"}</strong>{" "}
           <span style={{ opacity: 0.6 }}>@{f.handle}</span>
           <p style={{ margin: "4px 0" }}>{f.content}</p>
+          {f.txHash && (
+            <a href={txUrl(f.txHash)} target="_blank" rel="noreferrer" style={{ fontSize: "0.8em" }}>
+              🔗 tx on-chain (anónima)
+            </a>
+          )}
         </div>
       ))}
 

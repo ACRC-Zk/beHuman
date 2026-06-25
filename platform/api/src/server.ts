@@ -24,6 +24,7 @@ interface PostItem {
   username: string;
   content: string;
   contentHash: string;
+  txHash: string; // tx on-chain del ancla (firmada por cuenta efímera, sin address KYC)
   ts: number;
 }
 interface Store {
@@ -76,6 +77,7 @@ app.post("/content", (req, res) => {
   const platformId = String(req.body?.platformId ?? "");
   const content = String(req.body?.content ?? "").trim().slice(0, 560);
   const contentHash = String(req.body?.contentHash ?? "");
+  const txHash = String(req.body?.txHash ?? "");
   if (!platformId || !content || !contentHash) {
     return res.status(400).json({ error: "missing_fields" });
   }
@@ -87,6 +89,7 @@ app.post("/content", (req, res) => {
     username: profile.username,
     content,
     contentHash,
+    txHash,
     ts: Date.now(),
   };
   s.posts.push(item);
