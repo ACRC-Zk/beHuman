@@ -1,10 +1,16 @@
+import { useState } from "react";
 import "./App.css";
 import { KycFlow } from "./kyc/KycFlow";
+import { Status } from "./kyc/Status";
 
-// beHuman — Frontend. Capa 1: gate de identidad (DNI + cara) en vivo.
-// 📐 Pasos del usuario en la vault: `Flujo de KYC` · `Spec — Matcher DNI + Selfie`.
+// beHuman — Frontend. Capa 1: validar identidad (DNI + cara → ZK → on-chain) y ver el
+// estado por wallet. 📐 `Flujo de KYC` · `Spec — Matcher DNI + Selfie` en la vault.
+
+type Mode = "home" | "validate" | "status";
 
 function App() {
+  const [mode, setMode] = useState<Mode>("home");
+
   return (
     <main className="app">
       <header className="app__header">
@@ -14,7 +20,20 @@ function App() {
         </p>
       </header>
 
-      <KycFlow />
+      {mode === "home" && (
+        <section className="app__card">
+          <p>Verificá tu identidad una vez; después entrás con tu wallet.</p>
+          <button type="button" onClick={() => setMode("validate")}>
+            Validar mi identidad
+          </button>
+          <button type="button" onClick={() => setMode("status")} style={{ marginTop: 8 }}>
+            Ya me validé · ver mi estado (con mi wallet)
+          </button>
+        </section>
+      )}
+
+      {mode === "validate" && <KycFlow />}
+      {mode === "status" && <Status onBack={() => setMode("home")} />}
 
       <footer className="app__footer">
         demo testnet · el matcher es de prueba (no RENAPER) · cero PII on-chain
