@@ -35,6 +35,8 @@ export interface DeployEscrowInput {
   amount: string;
   roles: EscrowRoles;
   milestones: EscrowMilestone[];
+  /** Trustline del escrow (TW = escrow de stablecoin): issuer clásico G... + símbolo. */
+  trustline?: { address: string; symbol: string };
 }
 
 export interface TrustlessWork {
@@ -54,23 +56,21 @@ export function createTrustlessWork(cfg: TrustlessWorkConfig): TrustlessWork {
 
 const RELEASE_THRESHOLD = 2; // 2-de-3
 
-// ⚠️ ESTADO: endpoints/bodies ALINEADOS al OpenAPI real de api.trustlesswork.com
-// (/api-json, escrow "single-release"). Auth real = header `x-api-key` (NO Bearer).
-// PATRÓN REAL: cada acción devuelve un XDR sin firmar; el rol correspondiente lo firma y se
-// envía a POST /helper/send-transaction { signedXdr }. La orquestación de firma (con las
-// secrets de los firmantes) queda PENDIENTE de validación en vivo: la API key provista
-// responde 401 (hay que activarla/autorizarla en dapp.trustlesswork.com). Hasta entonces el
-// modo "dev" (mock) es el camino operativo. Las reglas de release 2-de-3 las enforcea
-// además nuestro contrato on-chain `campaign_controller` (autoridad última).
+// Endpoints/bodies VALIDADOS contra la API real (dev.api.trustlesswork.com) con un escrow
+// single-release desplegado en testnet. Auth = header `x-api-key`. Host dev/testnet:
+// https://dev.api.trustlesswork.com (prod = api.trustlesswork.com).
 //
-// Endpoints reales (single-release):
-//   POST /deployer/single-release            { signer, engagementId, title, description,
-//                                              roles, amount, platformFee, milestones, trustline } -> { xdr }
-//   POST /escrow/single-release/approve-milestone  { contractId, milestoneIndex, approver } -> { xdr }
-//   POST /escrow/single-release/release-funds      { contractId, releaseSigner }            -> { xdr }
-//   POST /escrow/single-release/dispute-escrow     { contractId, ... }                      -> { xdr }
-//   POST /escrow/single-release/resolve-dispute    { contractId, ... }                      -> { xdr }
-//   POST /helper/send-transaction                  { signedXdr }                            -> result
+// PATRÓN REAL: cada acción devuelve `{ unsignedTransaction }`; el rol correspondiente lo firma
+// (callback cfg.signXdr, inyectado por el server con la secret del rol) y se envía a
+// POST /helper/send-transaction { signedXdr } -> { status, contractId, escrow, ... }.
+//
+// TW es escrow de STABLECOIN: la `trustline` es { address: <issuer clásico G...>, symbol }
+// (p.ej. USDC testnet). NO custodia las donaciones (eso es DeFindex/Blend, en XLM); es la
+// capa de workflow/disputa. La autoridad de release 2-de-3 la tiene el contrato
+// on-chain `campaign_controller`.
+//
+// Endpoints reales (single-release): /deployer/single-release, approve-milestone,
+// release-funds, change-milestone-status, dispute-escrow, resolve-dispute, /helper/send-transaction.
 function realTW(cfg: TrustlessWorkConfig): TrustlessWork {
   const base = cfg.apiUrl.replace(/\/$/, "");
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -80,12 +80,19 @@ function realTW(cfg: TrustlessWorkConfig): TrustlessWork {
     if (!res.ok) throw new Error(`trustlesswork ${path} -> HTTP ${res.status} ${await res.text().catch(() => "")}`);
     return res.json();
   }
-  /** Firma el XDR con la secret del rol y lo envía a /helper/send-transaction. */
-  async function sign(xdr: string): Promise<{ hash: string }> {
-    const signed = cfg.signXdr ? await cfg.signXdr(xdr) : xdr;
-    const r = await post(`/helper/send-transaction`, { signedXdr: signed });
-    return { hash: String(r.txHash ?? r.hash ?? "") };
+  /** Firma el unsignedTransaction (con la secret del rol) y lo envía a /helper/send-transaction. */
+  async function send(unsignedTransaction: string): Promise<any> {
+    const signed = cfg.signXdr ? await cfg.signXdr(unsignedTransaction) : unsignedTransaction;
+    return post(`/helper/send-transaction`, { signedXdr: signed });
   }
+  const twRoles = (r: EscrowRoles) => ({
+    approver: r.approver,
+    serviceProvider: r.serviceProvider,
+    releaseSigner: r.releaseSigners[0] ?? r.platformAddress,
+    platformAddress: r.platformAddress,
+    disputeResolver: r.disputeResolver,
+    receiver: r.receiver,
+  });
   return {
     provider: "real",
     async deployEscrow(input) {
@@ -94,46 +101,40 @@ function realTW(cfg: TrustlessWorkConfig): TrustlessWork {
         engagementId: input.milestones[0]?.id ?? "campaign",
         title: "beHuman campaign escrow",
         description: "Funding ZK campaign",
-        roles: input.roles,
+        roles: twRoles(input.roles),
         amount: Number(input.amount),
         platformFee: 0,
         milestones: input.milestones.map((m) => ({ description: m.title })),
-        trustline: [input.asset],
+        trustline: input.trustline ?? { address: input.asset, symbol: "USDC" },
       });
-      await sign(r.xdr); // deploy on-chain; el contractId se resuelve del resultado/indexer
-      return { escrowId: r.contractId ?? r.escrowId ?? r.xdr };
+      const res = await send(r.unsignedTransaction);
+      return { escrowId: String(res.contractId ?? "") };
     },
-    async updateMilestone(contractId, milestoneId, _evidenceUri) {
+    async updateMilestone(contractId, milestoneIndex, _evidenceUri) {
       const r = await post(`/escrow/single-release/change-milestone-status`, {
         contractId,
-        milestoneIndex: milestoneId,
+        milestoneIndex,
         newStatus: "completed",
       });
-      await sign(r.xdr);
+      await send(r.unsignedTransaction);
     },
-    async approveMilestone(contractId, milestoneId, approver) {
-      const r = await post(`/escrow/single-release/approve-milestone`, {
-        contractId,
-        milestoneIndex: milestoneId,
-        approver,
-      });
-      await sign(r.xdr);
+    async approveMilestone(contractId, milestoneIndex, approver) {
+      const r = await post(`/escrow/single-release/approve-milestone`, { contractId, milestoneIndex, approver });
+      await send(r.unsignedTransaction);
     },
     async releaseFunds(contractId, signers) {
       if (signers.length < RELEASE_THRESHOLD) throw new Error("release: faltan firmas (2-de-3)");
-      const r = await post(`/escrow/single-release/release-funds`, {
-        contractId,
-        releaseSigner: signers[0],
-      });
-      return sign(r.xdr);
+      const r = await post(`/escrow/single-release/release-funds`, { contractId, releaseSigner: signers[0] });
+      const res = await send(r.unsignedTransaction);
+      return { hash: String(res.txHash ?? res.contractId ?? "") };
     },
     async startDispute(contractId, _by, _reason) {
       const r = await post(`/escrow/single-release/dispute-escrow`, { contractId });
-      await sign(r.xdr);
+      await send(r.unsignedTransaction);
     },
     async resolveDispute(contractId, _resolver, outcome) {
       const r = await post(`/escrow/single-release/resolve-dispute`, { contractId, outcome });
-      await sign(r.xdr);
+      await send(r.unsignedTransaction);
     },
   };
 }

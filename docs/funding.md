@@ -129,8 +129,42 @@ stellar contract invoke --id <NUEVO_ID> --source behuman-deployer --network test
   --signers '["<Gcause>","<Gplatform>","<Gneutral>"]'
 ```
 
-### Pendiente para cerrar la integración real
-1. **DeFindex** (yield/Blend): API key (`api.defindex.io/register`) + un **vault testnet** (su `contract ID`). API confirmada: base `https://api.defindex.io`, auth `Bearer`, patrón `/vault/{address}/{deposit|withdraw|balance|apy}` + `/send` (XDR firmado).
-2. **Trustless Work** (escrow): API key (vía `dapp.trustlesswork.com`) + validar contra Swagger (`api.trustlesswork.com/docs`).
-3. **Cross-contract**: que el `campaign_controller` deposite en el vault DeFindex y sea su Manager (necesita la interfaz del contrato del vault).
-4. **Enrutar release/refund/donate on-chain** contra el contrato (ya despliega y exige `require_auth`).
+### Integraciones reales — VALIDADAS on-chain en testnet
+
+**DeFindex (yield/Blend)** — ✅ funcionando. API `https://api.defindex.io`, auth `Bearer`,
+red por `?network=testnet`, patrón `/vault/{address}/{deposit|withdraw|balance|apy}` + `/send`.
+
+| Recurso | Valor |
+|---|---|
+| Vault XLM oficial (testnet) | `CCLV4H7WTLJQ7ATLHBBQV2WW3OINF3FOY5XZ7VPHZO7NH3D2ZS4GFSF6` |
+| Factory testnet | `CDSCWE4GLNBYYTES2OCYDFQA2LLY4RBIAX6ZI32VSUXD7GO6HRPO4A32` |
+| Estrategia XLM Blend | `CDVLOSPJPQOTB6ZCWO5VSGTOLGMKTXSFWYTUP572GTPNOWX4F76X3HPM` |
+| Depósito real verificado | tx `ee52e10c…` (5 XLM → vault) |
+
+Notas: la API devuelve `apy` en **porcentaje** (se normaliza a fracción); `amounts` en
+**stroops** (1 XLM = 1e7). El indexer de testnet de `/strategies` da 500, pero
+deposit/withdraw/balance/apy/discover funcionan.
+
+**Trustless Work (escrow/workflow)** — ✅ flujo validado on-chain. Host **dev/testnet**
+`https://dev.api.trustlesswork.com` (prod = `api.trustlesswork.com`), auth header `x-api-key`.
+
+| Recurso | Valor |
+|---|---|
+| Escrow single-release desplegado (testnet) | `CAUIE5WKHQ2FNIIXRY2HVVEUE55SXSPNKIWAFEJPLVMS5XI35YZL2E76` |
+| Trustline (USDC testnet, issuer clásico) | `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` (símbolo `USDC`) |
+
+Patrón: cada acción devuelve `{ unsignedTransaction }` → se firma con el rol → POST
+`/helper/send-transaction` → `{ contractId, escrow }`. `roles` es **objeto** (con
+`releaseSigner` singular); `trustline` es `{ address: issuer, symbol }`. **TW es escrow de
+stablecoin** (USDC): no custodia las donaciones (eso es el vault DeFindex en XLM), es la capa
+de workflow/disputa. Los participantes deben tener la **trustline USDC** y estar fondeados.
+
+### Pendiente para cerrar
+1. **Orquestación de firma por rol en el server**: TW firma cada acción con la secret del rol
+   correspondiente (deploy=plataforma, approve=approver, release=releaseSigner). Cablear
+   `signXdr` per-acción en `funding/api` (en dev usa `signerSecretsDev`).
+2. **Reconciliación de activo TW vs DeFindex**: el vault DeFindex es XLM; TW exige stablecoin
+   (USDC). Decisión de producto (campaña en USDC, o TW solo como workflow nominal).
+3. **Cross-contract**: que el `campaign_controller` deposite en el vault DeFindex y sea su
+   Manager (necesita la interfaz del contrato del vault).
+4. **Flip a `real` en el browser**: wallets efímeras de donación fondeadas (friendbot) + firma.
