@@ -21,6 +21,8 @@ import {
 import { generateFundingOpinionProof, handleOfCampaign } from "./zk3";
 
 const txUrl = (hash: string) => `https://stellar.expert/explorer/testnet/tx/${hash}`;
+// Una tx real de Stellar es un hash de 64 hex; los mocks de dev son cortos/prefijados.
+const isRealTx = (hash: string) => /^[0-9a-f]{64}$/i.test(hash);
 const fmt = (n: string | number) => Number(n).toLocaleString("es-AR", { maximumFractionDigits: 4 });
 
 export function Funding({ onBack }: { onBack: () => void }) {
@@ -296,8 +298,14 @@ export function Funding({ onBack }: { onBack: () => void }) {
       {error && <p style={{ color: "#c5221f" }}>Error: {error}</p>}
       {lastTx && (
         <p style={{ color: "#137333" }}>
-          ✅ Fondos liberados.{" "}
-          <a href={txUrl(lastTx)} target="_blank" rel="noreferrer">Ver la transacción</a>
+          ✅ Fondos liberados a la causa (capital + yield).{" "}
+          {isRealTx(lastTx) ? (
+            <a href={txUrl(lastTx)} target="_blank" rel="noreferrer">Ver la transacción</a>
+          ) : (
+            <span style={{ fontSize: "0.85em", opacity: 0.8 }}>
+              tx simulada (modo dev): <code>{lastTx}</code> — no existe on-chain.
+            </span>
+          )}
         </p>
       )}
 
