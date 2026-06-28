@@ -44,6 +44,22 @@ export function IconCompartir({ className = "" }: { className?: string }) {
   );
 }
 
+/** On-chain / contrato inteligente — cadena (link) que ata el post a la blockchain. */
+export function IconContrato({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.5 14.5l5-5M8.5 12.5l-1.6 1.6a3 3 0 0 0 4.24 4.24l1.6-1.6M15.5 11.5l1.6-1.6a3 3 0 0 0-4.24-4.24l-1.6 1.6"
+      />
+    </svg>
+  );
+}
+
 export function IconVoto({ up, className = "" }: { up: boolean; className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">

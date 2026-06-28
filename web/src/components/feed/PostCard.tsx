@@ -4,7 +4,7 @@ import type { Community, FeedPost } from "../../feed/types";
 import { displayName, fetchCommunities, findCommunity, formatTimeAgo, profilePath } from "../../feed/feedApi";
 import { useI18n } from "../../i18n/I18nProvider";
 import { CommunityChip } from "./CommunityChip";
-import { IconCompartir, IconResponder, IconResuena, IconVoto } from "./FeedIcons";
+import { IconContrato, IconResponder, IconResuena, IconVoto } from "./FeedIcons";
 import { PostMenu } from "./PostMenu";
 import { UserAvatar } from "./UserAvatar";
 import "./PostCard.css";
@@ -129,10 +129,29 @@ export function PostCard({ post, showVotes = false }: PostCardProps) {
             <IconResponder />
             <span>Responder{post.replyCount > 0 ? ` · ${post.replyCount}` : ""}</span>
           </button>
-          <button type="button" className="voice-card__action voice-card__action--icon">
-            <IconCompartir />
-            <span className="sr-only">Compartir</span>
-          </button>
+          {post.txHash && /^[0-9a-f]{64}$/i.test(post.txHash) ? (
+            <a
+              className="voice-card__action voice-card__action--icon"
+              href={`https://stellar.expert/explorer/testnet/tx/${post.txHash}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ textDecoration: "none" }}
+              title="Verificar esta opinión on-chain (Stellar Expert)"
+            >
+              <IconContrato />
+              <span className="sr-only">Ver on-chain</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              className="voice-card__action voice-card__action--icon"
+              disabled
+              title="Anclándose on-chain…"
+            >
+              <IconContrato />
+              <span className="sr-only">On-chain</span>
+            </button>
+          )}
         </footer>
       </div>
     </article>

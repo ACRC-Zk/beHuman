@@ -34,6 +34,7 @@ function mapApiItem(item: platformApi.ApiFeedItem, ownId: string): FeedPost {
     replyCount: 0,
     ts: item.ts,
     isOwn: item.platformId === ownId,
+    txHash: item.txHash,
   };
 }
 
