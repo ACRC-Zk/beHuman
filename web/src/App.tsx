@@ -1,4 +1,7 @@
 import { Route, Routes } from "react-router-dom";
+import { ArticleEditorPage } from "./pages/ArticleEditorPage";
+import { ArticleViewPage } from "./pages/ArticleViewPage";
+import { ArticlesPage } from "./pages/ArticlesPage";
 import { AuthPage } from "./pages/AuthPage";
 import { CampaignDetailPage } from "./pages/CampaignDetailPage";
 import { CausesPage } from "./pages/CausesPage";
@@ -21,6 +24,9 @@ function App() {
         <Route index element={<FeedPage />} />
         <Route path="r/:communityId" element={<FeedPage />} />
         <Route path="explore" element={<ExplorePage />} />
+        <Route path="articles" element={<ArticlesPage />} />
+        <Route path="articles/new" element={<ArticleEditorPage />} />
+        <Route path="articles/:id" element={<ArticleViewPage />} />
         <Route path="causes" element={<CausesPage />} />
         <Route path="causes/:id" element={<CampaignDetailPage />} />
         <Route path="profile" element={<ProfilePage />} />

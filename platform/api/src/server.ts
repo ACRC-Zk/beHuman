@@ -37,14 +37,40 @@ interface PostItem {
   curation: CurationVerdict; // veredicto de la curaduría (approved / flagged / escalated)
   ts: number;
 }
+// Artículo (long-form). El contentHash on-chain cubre título+banner+cuerpo (inmutable).
+interface ArticleItem {
+  id: string;
+  platformId: string;
+  handle: string;
+  username: string;
+  title: string;
+  banner: string; // data URL (o "")
+  content: string; // markdown
+  contentHash: string;
+  txHash: string; // ancla on-chain (opinion_board)
+  ts: number;
+}
+interface ArticleOpinion {
+  id: string;
+  articleId: string;
+  platformId: string;
+  handle: string;
+  content: string;
+  contentHash: string;
+  txHash: string;
+  ts: number;
+}
 interface Store {
   profiles: Record<string, Profile>;
   posts: PostItem[];
+  articles: ArticleItem[];
+  articleOpinions: ArticleOpinion[];
 }
 
 function load(): Store {
-  if (!existsSync(STORE)) return { profiles: {}, posts: [] };
-  return JSON.parse(readFileSync(STORE, "utf8")) as Store;
+  const base: Store = { profiles: {}, posts: [], articles: [], articleOpinions: [] };
+  if (!existsSync(STORE)) return base;
+  return { ...base, ...(JSON.parse(readFileSync(STORE, "utf8")) as Partial<Store>) };
 }
 function save(s: Store): void {
   writeFileSync(STORE, JSON.stringify(s, null, 2));
@@ -54,7 +80,8 @@ function save(s: Store): void {
 const handleOf = (platformId: string) => platformId.slice(-5);
 
 const app = express();
-app.use(express.json({ limit: "256kb" }));
+// Límite alto: los artículos pueden traer banner + imágenes embebidas (data URLs).
+app.use(express.json({ limit: "12mb" }));
 app.use((_req, res, next) => {
   res.header("Access-Control-Allow-Origin", process.env.CORS_ORIGIN ?? "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -144,6 +171,92 @@ app.post("/content", async (req, res) => {
 app.get("/feed", (_req, res) => {
   const s = load();
   res.json([...s.posts].reverse().filter((p) => p.curation?.status !== "escalated"));
+});
+
+// ─── Artículos (long-form) ─────────────────────────────────────────────────────
+// Misma transacción on-chain que un tweet (opinion_board), pero el contentHash cubre todo
+// el artículo (título+banner+cuerpo). Off-chain guardamos el contenido; on-chain solo el ancla.
+app.post("/articles", (req, res) => {
+  const platformId = String(req.body?.platformId ?? "");
+  const title = String(req.body?.title ?? "").trim().slice(0, 200);
+  const banner = String(req.body?.banner ?? "");
+  const content = String(req.body?.content ?? "");
+  const contentHash = String(req.body?.contentHash ?? "");
+  const txHash = String(req.body?.txHash ?? "");
+  if (!platformId || !title || !content || !contentHash) {
+    return res.status(400).json({ error: "missing_fields" });
+  }
+  const s = load();
+  const profile = s.profiles[platformId] ?? { username: "", handle: handleOf(platformId) };
+  const item: ArticleItem = {
+    id: randomUUID(),
+    platformId,
+    handle: profile.handle,
+    username: profile.username,
+    title,
+    banner,
+    content,
+    contentHash,
+    txHash,
+    ts: Date.now(),
+  };
+  s.articles.push(item);
+  save(s);
+  console.log(`[article] id=${item.id} title="${title.slice(0, 40)}"`);
+  res.json(item);
+});
+
+// Lista liviana (sin el cuerpo markdown completo).
+app.get("/articles", (_req, res) => {
+  const s = load();
+  res.json(
+    [...s.articles].reverse().map((a) => ({
+      id: a.id,
+      platformId: a.platformId,
+      handle: a.handle,
+      username: a.username,
+      title: a.title,
+      banner: a.banner,
+      excerpt: a.content.replace(/[#>*_`!\[\]()-]/g, "").trim().slice(0, 160),
+      txHash: a.txHash,
+      ts: a.ts,
+    })),
+  );
+});
+
+app.get("/articles/:id", (req, res) => {
+  const a = load().articles.find((x) => x.id === req.params.id);
+  return a ? res.json(a) : res.status(404).json({ error: "not_found" });
+});
+
+app.post("/articles/:id/opinions", (req, res) => {
+  const s = load();
+  const article = s.articles.find((x) => x.id === req.params.id);
+  if (!article) return res.status(404).json({ error: "not_found" });
+  const platformId = String(req.body?.platformId ?? "");
+  const content = String(req.body?.content ?? "").trim().slice(0, 560);
+  const contentHash = String(req.body?.contentHash ?? "");
+  const txHash = String(req.body?.txHash ?? "");
+  if (!platformId || !content || !contentHash) return res.status(400).json({ error: "missing_fields" });
+  const profile = s.profiles[platformId] ?? { username: "", handle: handleOf(platformId) };
+  const op: ArticleOpinion = {
+    id: randomUUID(),
+    articleId: article.id,
+    platformId,
+    handle: profile.handle,
+    content,
+    contentHash,
+    txHash,
+    ts: Date.now(),
+  };
+  s.articleOpinions.push(op);
+  save(s);
+  res.json(op);
+});
+
+app.get("/articles/:id/opinions", (req, res) => {
+  const s = load();
+  res.json([...s.articleOpinions].filter((o) => o.articleId === req.params.id).reverse());
 });
 
 // Vista mínima de moderación: cola de casos escalados (contenido + seudónimo, nada más).

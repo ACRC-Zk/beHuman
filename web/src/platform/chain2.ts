@@ -114,3 +114,19 @@ export async function registerIdentity(kp: StellarSdk.Keypair, p: PlatformProof)
 export async function postTweet(kp: StellarSdk.Keypair, p: PlatformProof): Promise<string> {
   return invoke(kp, contract().call("post", proofVal(p), pubVal(p)));
 }
+
+/**
+ * Cotiza (sin enviar) el costo on-chain de anclar un post/artículo: arma la tx `post` y la
+ * SIMULA contra la red para obtener la tarifa total real (base + recursos Soroban), en stroops.
+ */
+export async function quotePost(kp: StellarSdk.Keypair, p: PlatformProof): Promise<bigint> {
+  const account = await rpc.getAccount(kp.publicKey());
+  const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
+    .addOperation(contract().call("post", proofVal(p), pubVal(p)))
+    .setTimeout(120)
+    .build();
+  const sim = await rpc.simulateTransaction(tx);
+  if (StellarSdk.rpc.Api.isSimulationError(sim)) throw parseErr(sim.error) ?? new Error(sim.error);
+  const assembled = StellarSdk.rpc.assembleTransaction(tx, sim).build();
+  return BigInt(assembled.fee); // tarifa total estimada, en stroops (1 XLM = 1e7)
+}

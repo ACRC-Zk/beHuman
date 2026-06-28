@@ -12,12 +12,13 @@ export function SidebarNav() {
   const { t, locale } = useI18n();
   const n = t.social.nav;
   const causasLabel = locale === "es" ? "Causas" : "Causes";
+  const articulosLabel = locale === "es" ? "Artículos" : "Articles";
   const [unreadNotif, setUnreadNotif] = useState(0);
   const [unreadMsg, setUnreadMsg] = useState(0);
 
   const desktopNav = [
     { to: "/app", label: n.feed, end: true as const },
-    { to: "/app/explore", label: n.threads, end: false as const },
+    { to: "/app/articles", label: articulosLabel, end: false as const },
     { to: "/app/causes", label: causasLabel, end: false as const },
     { to: "/app/messages", label: n.messages, end: false as const, msgBadge: true as const },
     { to: "/app/notifications", label: n.notifications, end: false as const, notifBadge: true as const },
@@ -26,7 +27,7 @@ export function SidebarNav() {
 
   const mobileNav = [
     { to: "/app", label: n.feed, end: true as const },
-    { to: "/app/explore", label: n.threads, end: false as const },
+    { to: "/app/articles", label: articulosLabel, end: false as const },
     { to: "/app/messages", label: n.messages, end: false as const, msgBadge: true as const },
     { to: "/app/compose", label: n.publish, end: false as const, compose: true as const },
     { to: "/app/profile", label: n.profile, end: false as const, profile: true as const },
