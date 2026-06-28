@@ -36,7 +36,7 @@ export async function donate(
   donorWallet: string,
   amount: string,
   membershipProof: MembershipProof,
-): Promise<{ ok: boolean; raisedAmount?: string; xdr?: string }> {
+): Promise<{ ok: boolean; raisedAmount?: string; xdr?: string; donation?: { txHash: string } }> {
   return json(await post(`/campaigns/${campaignId}/donate`, { donorWallet, amount, membershipProof }));
 }
 

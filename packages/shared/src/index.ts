@@ -161,6 +161,9 @@ export interface Campaign {
   milestones: Milestone[];
   state: EscrowState;
   createdAt: number;
+  // Stats derivados (read-only, los agrega la API en GET): para la UX, no se persisten.
+  donorCount?: number; // donantes únicos (wallets efímeras distintas)
+  estApy?: number; // rendimiento estimado del vault (fracción, p.ej. 0.08 = 8%)
 }
 
 /** Aporte anónimo (desde wallet efímera). El monto es visible en el MVP. */

@@ -1,13 +1,14 @@
-// Capa 3 — Detalle de campaña: donar anónimo, mi posición + recuperar aporte, panel validador
-// (aprobar hitos + liberar 2-de-3) y opiniones por campaña (1 voz por humano).
-// Cero PII: la wallet de donación es efímera; la opinión usa el platformId scopeado a la campaña.
+// Capa 3 — Detalle de causa: portada + stats grandes + panel de donación guiado (anónimo),
+// panel validador (aprobar hitos + release 2-de-3) y opiniones por campaña (1 voz por humano).
+// Cero PII: la donación usa una wallet EFÍMERA nueva (RT-05); la opinión usa el platformId
+// scopeado a la campaña. El gating es por prueba de pertenencia, nunca por is_verified(address).
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import * as StellarSdk from "@stellar/stellar-sdk";
 import type { Campaign, CampaignOpinion, Sentiment } from "@behuman/shared";
 import { Button } from "../components/ui/Button";
 import { loadAnyCredential } from "../kyc/credentialStore";
 import { generatePlatformProof } from "../platform/zk2";
+import { createFundedEphemeral } from "../platform/ephemeral";
 import {
   approveMilestone,
   donate,
@@ -25,11 +26,18 @@ import {
   handleOfCampaign,
   signFundingAction,
 } from "../funding/zk3";
-import { humanState } from "./CausesPage";
+import { daysLeft, fmtAmount, fmtApy, fundedPct, humanState, isRealTx, txUrl } from "../funding/causeView";
 import "../styles/behuman-ui.css";
+import "./Causes.css";
 
-const isRealTx = (h: string) => /^[0-9a-f]{64}$/i.test(h);
-const fmt = (n: string | number) => Number(n).toLocaleString("es-AR", { maximumFractionDigits: 4 });
+const PRESETS = ["10", "50", "100"];
+type DonateStep = null | "proof" | "wallet" | "sending" | "done";
+const STEP_ORDER: Record<Exclude<DonateStep, null>, number> = { proof: 0, wallet: 1, sending: 2, done: 3 };
+const STEPS: { key: "proof" | "wallet" | "sending"; label: string }[] = [
+  { key: "proof", label: "Generando tu prueba de pertenencia (ZK)…" },
+  { key: "wallet", label: "Creando tu wallet anónima y fondeándola…" },
+  { key: "sending", label: "Firmando y enviando tu donación…" },
+];
 
 export function CampaignDetailPage() {
   const { id = "" } = useParams();
@@ -38,11 +46,13 @@ export function CampaignDetailPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [amount, setAmount] = useState("100");
+  const [amount, setAmount] = useState("50");
   const [donorWallet, setDonorWallet] = useState<string | null>(null);
   const [donorSecret, setDonorSecret] = useState<string | null>(null);
   const [position, setPosition] = useState<Position | null>(null);
-  const [lastTx, setLastTx] = useState<string | null>(null);
+  const [donateStep, setDonateStep] = useState<DonateStep>(null);
+  const [lastDonationTx, setLastDonationTx] = useState<string | null>(null);
+  const [lastReleaseTx, setLastReleaseTx] = useState<string | null>(null);
 
   const [opinion, setOpinion] = useState("");
   const [sentiment, setSentiment] = useState<Sentiment>("support");
@@ -72,20 +82,29 @@ export function CampaignDetailPage() {
   async function doDonate() {
     if (!c) return;
     setError(null);
+    setLastDonationTx(null);
+    setDonateStep("proof");
     try {
-      setBusy("Generando tu prueba de humano (ZK) en el dispositivo…");
       const mp = await membership();
-      const kp = StellarSdk.Keypair.random(); // wallet efímera POR donación (anónima)
+      // RT-05: wallet efímera NUEVA por donación, fondeada por friendbot (testnet). Nunca el
+      // address del KYC ni el platformId → sin rastro identidad ↔ donación.
+      setDonateStep("wallet");
+      const kp = await createFundedEphemeral();
       setDonorWallet(kp.publicKey());
       setDonorSecret(kp.secret());
-      setBusy("Sumando tu aporte (entra a un fondo que genera rendimiento)…");
+
+      setDonateStep("sending");
       const r = await donate(c.id, kp.publicKey(), amount, mp);
-      if (r.raisedAmount) setC({ ...c, raisedAmount: r.raisedAmount });
+      if (r.raisedAmount) {
+        setC({ ...c, raisedAmount: r.raisedAmount, donorCount: (c.donorCount ?? 0) + 1 });
+      }
+      setLastDonationTx(r.donation?.txHash ?? null);
+
       const sig = signFundingAction(kp.secret(), fundingChallenge("refund", c.id, `position:${kp.publicKey()}`));
       setPosition(await getPosition(c.id, kp.publicKey(), sig.signature));
-      setBusy(null);
+      setDonateStep("done");
     } catch (e) {
-      setBusy(null);
+      setDonateStep(null);
       setError((e as Error).message);
     }
   }
@@ -94,12 +113,12 @@ export function CampaignDetailPage() {
     if (!c || !donorWallet || !donorSecret) return;
     setError(null);
     try {
-      setBusy("Devolviendo tu aporte…");
+      setBusy("Devolviendo tu aporte a tu wallet anónima…");
       const sig = signFundingAction(donorSecret, fundingChallenge("refund", c.id, donorWallet));
       const r = await refundCampaign(c.id, donorWallet, sig);
       setPosition(null);
       setBusy(null);
-      alert(`Te devolvimos ${fmt(r.amount)} ${c.asset} a tu wallet anónima.`);
+      alert(`Te devolvimos ${fmtAmount(r.amount)} ${c.asset} a tu wallet anónima.`);
     } catch (e) {
       setBusy(null);
       setError((e as Error).message);
@@ -160,7 +179,7 @@ export function CampaignDetailPage() {
       const challenge = fundingChallenge("release", c.id, c.raisedAmount);
       const signatures = signers.filter((a) => byAddr[a]).map((a) => signFundingAction(byAddr[a], challenge));
       const r = await releaseCampaign(c.id, signatures);
-      setLastTx(r.txHash);
+      setLastReleaseTx(r.txHash);
       setC({ ...c, state: "released" });
       setBusy(null);
     } catch (e) {
@@ -173,26 +192,57 @@ export function CampaignDetailPage() {
   if (!c) return <div className="bh app-page"><p className="bh-note">Cargando…</p></div>;
 
   const s = humanState(c);
-  const pct = Math.min(100, (Number(c.raisedAmount) / Math.max(1, Number(c.goalAmount))) * 100);
+  const pct = fundedPct(c);
+  const left = daysLeft(c.deadline);
   const allApproved = c.milestones.every((m) => m.status === "approved");
   const goalReached = Number(c.raisedAmount) >= Number(c.goalAmount);
+  const donating = donateStep !== null && donateStep !== "done";
   const toggleSigner = (a: string) =>
     setSigners((x) => (x.includes(a) ? x.filter((y) => y !== a) : [...x, a]));
 
   return (
-    <div className="bh app-page">
+    <div className="bh app-page cause-detail">
       <Link to="/app/causes" className="bh-back">← Causas</Link>
-      <header style={{ margin: "0.75rem 0 1rem" }}>
+
+      {/* Portada */}
+      <header className="cause-cover">
         <span className={`bh-state bh-state--${s.cls}`}>{s.label}</span>
-        <h1 className="bh-h1" style={{ marginTop: "0.5rem" }}>{c.title}</h1>
-        <p className="bh-muted" style={{ fontSize: "0.9rem" }}>
-          {fmt(c.raisedAmount)} / {fmt(c.goalAmount)} {c.asset} · cierra el{" "}
-          {new Date(c.deadline).toLocaleDateString("es-AR")}
-        </p>
-        <div className="bh-progress" style={{ marginTop: "0.6rem" }}>
+        <h1 className="bh-h1 cause-cover__title">{c.title}</h1>
+        <p className="cause-cover__story">{c.summary || "Esta causa todavía no agregó una descripción."}</p>
+
+        <div className="bh-progress cause-cover__progress">
           <div className="bh-progress__bar" style={{ width: `${pct}%` }} />
         </div>
-        <p className="bh-sub" style={{ marginTop: "0.75rem" }}>{c.summary}</p>
+
+        {/* Stats grandes */}
+        <div className="cause-stats">
+          <div className="cause-stat">
+            <span className="cause-stat__value">{fmtAmount(c.raisedAmount)}</span>
+            <span className="cause-stat__label">recaudado ({c.asset})</span>
+          </div>
+          <div className="cause-stat">
+            <span className="cause-stat__value">{fmtAmount(c.goalAmount)}</span>
+            <span className="cause-stat__label">meta</span>
+          </div>
+          <div className="cause-stat">
+            <span className="cause-stat__value">{Math.round(pct)}%</span>
+            <span className="cause-stat__label">financiado</span>
+          </div>
+          <div className="cause-stat">
+            <span className="cause-stat__value">{c.donorCount ?? 0}</span>
+            <span className="cause-stat__label">donantes</span>
+          </div>
+          <div className="cause-stat">
+            <span className="cause-stat__value">{left > 0 ? left : 0}</span>
+            <span className="cause-stat__label">días restantes</span>
+          </div>
+          {typeof c.estApy === "number" && c.estApy > 0 && (
+            <div className="cause-stat cause-stat--yield">
+              <span className="cause-stat__value">{fmtApy(c.estApy)}</span>
+              <span className="cause-stat__label">rinde / año</span>
+            </div>
+          )}
+        </div>
       </header>
 
       {!cred && (
@@ -204,33 +254,100 @@ export function CampaignDetailPage() {
         </div>
       )}
 
-      {/* Donar */}
+      {/* Panel de donación */}
       {cred && c.state === "fundraising" && (
-        <div className="bh-card">
-          <h2 className="bh-h2">Donar (anónimo · genera rendimiento)</h2>
-          <div className="bh-actions">
-            <input className="bh-input bh-input--sm" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <span className="bh-muted">{c.asset}</span>
-            <Button onClick={doDonate} disabled={!!busy || Number(amount) <= 0}>Donar</Button>
+        <div className="bh-card donate-panel">
+          <h2 className="bh-h2">Donar a esta causa</h2>
+          <p className="donate-panel__anon">
+            🛡️ Donás desde una <strong>wallet anónima de un solo uso</strong>; no se vincula a tu
+            identidad. Tu aporte genera rendimiento hasta que se cumplan los hitos.
+          </p>
+
+          {/* Montos: presets + custom */}
+          <div className="donate-presets" role="group" aria-label="Montos sugeridos">
+            {PRESETS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={`donate-chip ${amount === p ? "is-active" : ""}`}
+                onClick={() => setAmount(p)}
+                disabled={donating}
+              >
+                {p} {c.asset}
+              </button>
+            ))}
           </div>
-          {position && (
-            <p className="bh-note bh-note--ok">
-              Aportaste y hoy vale ~{fmt(position.underlying)} {c.asset} (rinde {(position.apy * 100).toFixed(1)}%/año), desde una wallet anónima.
-            </p>
+          <label className="donate-amount">
+            <span className="bh-label">Otro monto</span>
+            <div className="donate-amount__row">
+              <input
+                className="bh-input"
+                type="number"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={donating}
+              />
+              <span className="donate-amount__asset">{c.asset}</span>
+            </div>
+          </label>
+
+          <Button onClick={doDonate} disabled={donating || Number(amount) <= 0} className="donate-cta">
+            {donating ? "Procesando…" : `Donar ${fmtAmount(amount)} ${c.asset}`}
+          </Button>
+
+          {/* Flujo guiado */}
+          {donateStep && (
+            <ol className="donate-flow">
+              {STEPS.map((step) => {
+                const active = donateStep !== "done" ? STEP_ORDER[donateStep] : 3;
+                const idx = STEP_ORDER[step.key];
+                const status = idx < active ? "done" : idx === active ? "active" : "pending";
+                return (
+                  <li key={step.key} className={`donate-flow__step is-${status}`}>
+                    <span className="donate-flow__icon">
+                      {status === "done" ? "✓" : status === "active" ? <span className="donate-flow__spin" /> : ""}
+                    </span>
+                    <span>{step.label}</span>
+                  </li>
+                );
+              })}
+            </ol>
           )}
-          {position && (
-            <div className="bh-actions">
-              <Button variant="ghost" onClick={doRefund} disabled={!!busy}>
-                Recuperar mi aporte (si la causa no llega a la meta)
-              </Button>
+
+          {/* Confirmación */}
+          {donateStep === "done" && (
+            <div className="donate-done">
+              <p className="bh-note bh-note--ok" style={{ margin: 0 }}>
+                ✅ ¡Gracias! Tu donación de {fmtAmount(amount)} {c.asset} entró de forma anónima.
+              </p>
+              {position && (
+                <p className="bh-muted" style={{ margin: "0.4rem 0 0", fontSize: "0.85rem" }}>
+                  Hoy tu aporte vale ~{fmtAmount(position.underlying)} {c.asset} (rinde {fmtApy(position.apy)}/año).
+                </p>
+              )}
+              <p style={{ margin: "0.4rem 0 0", fontSize: "0.85rem" }}>
+                {isRealTx(lastDonationTx) ? (
+                  <a href={txUrl(lastDonationTx!)} target="_blank" rel="noreferrer" className="bh-back">
+                    Ver la transacción on-chain →
+                  </a>
+                ) : (
+                  <span className="bh-muted">(transacción simulada en este entorno de prueba)</span>
+                )}
+              </p>
+              <div className="bh-actions" style={{ marginTop: "0.5rem" }}>
+                <Button variant="ghost" onClick={doRefund} disabled={!!busy}>
+                  Recuperar mi aporte (si la causa no llega a la meta)
+                </Button>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Panel validador */}
-      <div className="bh-card">
-        <h2 className="bh-h2">Panel de validador</h2>
+      {/* Panel validador (dev/demo) */}
+      <details className="bh-card validator-panel">
+        <summary className="bh-h2 validator-panel__summary">Panel de validador</summary>
         {c.milestones.length === 0 && <p className="bh-note">Esta causa no tiene hitos.</p>}
         {c.milestones.map((m) => (
           <div key={m.id} className="bh-milestone">
@@ -263,11 +380,11 @@ export function CampaignDetailPage() {
         {c.state === "fundraising" && (!allApproved || !goalReached) && (
           <p className="bh-note">Requiere todos los hitos aprobados y la meta alcanzada.</p>
         )}
-        {lastTx && (
+        {lastReleaseTx && (
           <p className="bh-note bh-note--ok">
             ✅ Fondos entregados a la causa (capital + rendimiento).{" "}
-            {isRealTx(lastTx) ? (
-              <a href={`https://stellar.expert/explorer/testnet/tx/${lastTx}`} target="_blank" rel="noreferrer" className="bh-back">
+            {isRealTx(lastReleaseTx) ? (
+              <a href={txUrl(lastReleaseTx)} target="_blank" rel="noreferrer" className="bh-back">
                 Ver la transacción
               </a>
             ) : (
@@ -275,7 +392,7 @@ export function CampaignDetailPage() {
             )}
           </p>
         )}
-      </div>
+      </details>
 
       {/* Opiniones */}
       <div className="bh-card">
