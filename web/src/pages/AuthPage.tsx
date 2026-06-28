@@ -4,6 +4,7 @@ import { HeroBackground } from "../components/hero/HeroBackground";
 import { LanguageToggle } from "../components/ui/LanguageToggle";
 import { useI18n } from "../i18n/I18nProvider";
 import { connectAndCheck } from "../identity/identity";
+import { POLLAR_ENABLED, PollarEmailLogin } from "../identity/pollar";
 import "./AuthPage.css";
 
 type AuthTab = "login" | "register";
@@ -112,6 +113,18 @@ export function AuthPage({ defaultTab = "login" }: { defaultTab?: AuthTab }) {
               >
                 {auth.startVerification}
               </button>
+
+              {/* Ruta fácil para quien no tiene wallet: crearla con email vía Pollar.
+                  Pollar solo crea la wallet; tu identidad anónima nunca se vincula al email. */}
+              {POLLAR_ENABLED && (
+                <div className="auth-page__pollar">
+                  <span className="auth-page__or">o</span>
+                  <PollarEmailLogin onReady={() => navigate("/onboarding?via=email")} />
+                  <p className="auth-page__hint">
+                    Tu email crea tu wallet, pero <strong>nunca se vincula</strong> a tu identidad anónima.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

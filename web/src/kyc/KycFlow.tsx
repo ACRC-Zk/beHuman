@@ -44,8 +44,14 @@ const DATA_REASON: Record<string, string> = {
   no_face_in_document: "no se detecta la cara en el documento",
 };
 
-export function KycFlow({ onDone }: { onDone?: () => void } = {}) {
-  const [step, setStep] = useState<Step>("connect");
+export function KycFlow({
+  onDone,
+  mode = "wallet",
+}: { onDone?: () => void; mode?: "wallet" | "credential" } = {}) {
+  // mode "wallet": flujo completo (conecta wallet + registra on-chain).
+  // mode "credential": onboarding Pollar — solo crea la credencial ZK client-side (matcher),
+  // sin conectar wallet ni firmar/registrar on-chain (Pollar ya creó la wallet por email).
+  const [step, setStep] = useState<Step>(mode === "credential" ? "consent" : "connect");
   const [address, setAddress] = useState<string | null>(null);
   const [doc, setDoc] = useState<Blob | null>(null);
   const [attrs, setAttrs] = useState<AttributesInput | null>(null);
@@ -99,7 +105,41 @@ export function KycFlow({ onDone }: { onDone?: () => void } = {}) {
     }
   }
 
+  // Onboarding Pollar (credential): matcher → credencial ZK client-side, sin wallet ni on-chain.
+  async function processCredentialOnly(frames: Blob[]) {
+    if (!doc || !attrs) return fail("Faltan datos del flujo.");
+    setStep("processing");
+    try {
+      let cred: StoredCredential | null = loadCredential(attrs.docId);
+      if (!cred) {
+        setMsg("Generando tu secreto e identidad (en el dispositivo)…");
+        const secret = randomSecret();
+        const commitment = await computeCommitment(attrs, secret);
+        setMsg("Validando documento + cara y registrando en el issuer…");
+        const en = await enroll(doc, frames, commitment, {
+          docId: attrs.docId,
+          birthYear: attrs.birthYear,
+          countryCode: attrs.countryCode,
+        });
+        if (!en.ok) return fail(en.reasons.map((r) => REASON[r] ?? r).join(" "));
+        cred = {
+          attributes: attrs,
+          secret,
+          issuerRoot: en.issuerRoot!,
+          pathElements: en.pathElements!,
+          pathIndices: en.pathIndices!,
+        };
+        saveCredential(attrs.docId, cred);
+      }
+      setVerified(true);
+      setStep("done");
+    } catch (e) {
+      fail((e as Error).message);
+    }
+  }
+
   async function process(frames: Blob[]) {
+    if (mode === "credential") return processCredentialOnly(frames);
     if (!doc || !attrs || !address) return fail("Faltan datos del flujo.");
     setStep("processing");
     try {
@@ -278,9 +318,11 @@ export function KycFlow({ onDone }: { onDone?: () => void } = {}) {
       )}
       <div className="bh-actions">
         {onDone && <Button onClick={onDone}>Entrar a la app</Button>}
-        <Button variant="ghost" onClick={retryRegister}>
-          Probar el candado anti-duplicados
-        </Button>
+        {mode === "wallet" && lastProof && (
+          <Button variant="ghost" onClick={retryRegister}>
+            Probar el candado anti-duplicados
+          </Button>
+        )}
       </div>
       {nullifierMsg && <p className="bh-note">{nullifierMsg}</p>}
     </section>
