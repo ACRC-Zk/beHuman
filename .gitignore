@@ -40,6 +40,7 @@ identity/issuer/matcher/models/
 
 # --- Estado local del issuer (commitments + hashes de de-dup, NO es PII) ---
 identity/issuer/.issuer-state.json
+identity/issuer/.issuer-state.test.json
 
 # --- Coordinación entre agentes (no es código del producto) ---
 .comms/

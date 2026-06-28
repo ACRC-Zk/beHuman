@@ -1,0 +1,102 @@
+/**
+ * Motion system — Emil Kowalski design engineering
+ * @see https://emilkowal.ski/ui/agents-with-taste
+ *
+ * Press feedback: scale(0.97) on :active, 140ms ease-out.
+ * Hover/color: ease, ~180ms. UI motion stays under 300ms.
+ */
+
+.ui-pressable,
+:is(
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a.btn,
+  .btn,
+  .voice-card__action,
+  .voice-card__vote,
+  .chat-composer__send:not(:disabled),
+  .sidebar-nav__compose,
+  .voice-composer__submit:not(:disabled),
+  .voice-composer__chip,
+  .action-menu__trigger,
+  .action-menu__item:not(:disabled),
+  .feed-column__tab,
+  .auth-page__submit:not(:disabled),
+  .site-nav__menu-btn
+):not(.no-press) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    background var(--duration-ui) var(--ease),
+    border-color var(--duration-ui) var(--ease),
+    color var(--duration-ui) var(--ease),
+    box-shadow var(--duration-ui) var(--ease),
+    filter var(--duration-ui) var(--ease),
+    opacity var(--duration-ui) var(--ease);
+}
+
+.ui-pressable:active:not(:disabled):not([aria-disabled="true"]),
+:is(
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a.btn,
+  .btn,
+  .voice-card__action,
+  .voice-card__vote,
+  .chat-composer__send:not(:disabled),
+  .sidebar-nav__compose,
+  .voice-composer__submit:not(:disabled),
+  .voice-composer__chip,
+  .action-menu__trigger,
+  .action-menu__item:not(:disabled),
+  .feed-column__tab,
+  .auth-page__submit:not(:disabled),
+  .site-nav__menu-btn
+):not(.no-press):active:not(:disabled):not([aria-disabled="true"]) {
+  transform: scale(var(--scale-press));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-pressable:active,
+  :is(
+    button:not(:disabled),
+    [role="button"]:not([aria-disabled="true"]),
+    a.btn,
+    .btn,
+    .voice-card__action,
+    .voice-card__vote,
+    .chat-composer__send:not(:disabled),
+    .sidebar-nav__compose,
+    .voice-composer__submit:not(:disabled),
+    .voice-composer__chip,
+    .action-menu__trigger,
+    .action-menu__item:not(:disabled),
+    .feed-column__tab,
+    .auth-page__submit:not(:disabled),
+    .site-nav__menu-btn
+  ):not(.no-press):active {
+    transform: none;
+  }
+}
+
+html.reduce-motion .ui-pressable:active,
+html.reduce-motion :is(
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a.btn,
+  .btn,
+  .voice-card__action,
+  .voice-card__vote,
+  .chat-composer__send:not(:disabled),
+  .sidebar-nav__compose,
+  .voice-composer__submit:not(:disabled),
+  .voice-composer__chip,
+  .action-menu__trigger,
+  .action-menu__item:not(:disabled),
+  .feed-column__tab,
+  .auth-page__submit:not(:disabled),
+  .site-nav__menu-btn
+):not(.no-press):active {
+  transform: none;
+}

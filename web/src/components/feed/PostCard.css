@@ -59,10 +59,6 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out),
-    background var(--duration-fast) var(--ease-out);
 }
 
 .voice-card__vote:hover {
@@ -83,22 +79,6 @@
   color: var(--color-text);
 }
 
-.voice-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-height: 1.75rem;
-  margin-bottom: 0.4rem;
-}
-
-.voice-card__top-end {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-left: auto;
-}
-
 .voice-card__time {
   font-size: 0.72rem;
   font-weight: 600;
@@ -112,6 +92,15 @@
   gap: 0.55rem;
   margin-bottom: 0.55rem;
   padding-left: 0.35rem;
+  min-width: 0;
+}
+
+.voice-card__head-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .voice-card__avatar-link {
@@ -122,16 +111,21 @@
 
 .voice-card__who {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.3rem;
   min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .voice-card__name {
   font-weight: 800;
   font-size: 0.92rem;
   color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .voice-card__name:hover {
@@ -141,6 +135,8 @@
 .voice-card__handle {
   font-size: 0.78rem;
   color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .voice-card__body {
@@ -186,9 +182,6 @@
   border: none;
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    background var(--duration-fast) var(--ease-out);
 }
 
 .voice-card__action:hover {

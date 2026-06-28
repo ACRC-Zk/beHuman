@@ -84,14 +84,6 @@
   background: linear-gradient(135deg, var(--color-accent), var(--color-accent-deep));
   border-radius: var(--radius-pill);
   box-shadow: 0 4px 16px var(--color-accent-glow);
-  transition:
-    transform var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
-}
-
-.sidebar-nav__compose:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.22);
 }
 
 .sidebar-nav__user {

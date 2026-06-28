@@ -87,16 +87,6 @@ export function PostCard({ post, showVotes = false }: PostCardProps) {
       )}
 
       <div className="voice-card__panel">
-        <div className="voice-card__top">
-          {community && <CommunityChip community={community} size="md" />}
-          <div className="voice-card__top-end">
-            <time dateTime={new Date(post.ts).toISOString()} className="voice-card__time">
-              {formatTimeAgo(post.ts, locale)}
-            </time>
-            <PostMenu postId={post.id} />
-          </div>
-        </div>
-
         <header className="voice-card__head">
           <Link to={authorPath} className="voice-card__avatar-link" aria-label={`Ver perfil de ${name}`}>
             <UserAvatar user={avatarUser} size="sm" verified />
@@ -106,6 +96,13 @@ export function PostCard({ post, showVotes = false }: PostCardProps) {
               {name}
             </Link>
             <span className="voice-card__handle">@{post.handle}</span>
+            {community && <CommunityChip community={community} size="md" />}
+          </div>
+          <div className="voice-card__head-end">
+            <time dateTime={new Date(post.ts).toISOString()} className="voice-card__time">
+              {formatTimeAgo(post.ts, locale)}
+            </time>
+            <PostMenu postId={post.id} />
           </div>
         </header>
 

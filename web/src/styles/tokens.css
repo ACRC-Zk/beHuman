@@ -84,10 +84,18 @@
 
   --color-error: #dc2626;
 
-  /* Motion */
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --duration-fast: 180ms;
-  --duration-normal: 320ms;
+  /* Motion — Emil Kowalski design engineering (emilkowal.ski/ui/agents-with-taste) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease: ease;
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-micro: 120ms;
+  --duration-press: 140ms;
+  --duration-ui: 180ms;
+  --duration-fast: var(--duration-ui);
+  --duration-normal: 280ms;
+  --scale-press: 0.97;
+  --scale-enter: 0.95;
   --spring-strength: 0.08;
 
   /* Hero glow (canvas lee estos valores vía getComputedStyle) */

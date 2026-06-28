@@ -21,9 +21,6 @@
   border-radius: var(--radius-pill);
   cursor: pointer;
   flex-shrink: 0;
-  transition:
-    background var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
 }
 
 .action-menu__trigger:hover {

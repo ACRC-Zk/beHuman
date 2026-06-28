@@ -98,13 +98,6 @@
   border: 1px solid color-mix(in srgb, var(--chip-accent, var(--color-accent)) 25%, transparent);
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition:
-    background var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
-}
-
-.voice-composer__chip:hover {
-  transform: translateY(-1px);
 }
 
 .voice-composer__chip.is-picked {
@@ -140,14 +133,10 @@
   border: none;
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition:
-    filter var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
 }
 
 .voice-composer__submit:not(:disabled):hover {
   filter: brightness(0.95);
-  transform: translateY(-1px);
 }
 
 .voice-composer__submit:disabled {
