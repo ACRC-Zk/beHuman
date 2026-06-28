@@ -21,7 +21,7 @@ export function ArticlesPage() {
   }, []);
 
   return (
-    <div className="bh articles">
+    <div className="bh app-page articles">
       <header className="articles__top">
         <div>
           <p className="bh-eyebrow">Capa 2 · long-form</p>

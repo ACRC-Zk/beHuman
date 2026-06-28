@@ -169,8 +169,8 @@ export function CampaignDetailPage() {
     }
   }
 
-  if (error && !c) return <div className="bh"><p className="bh-note bh-note--err">{error}</p></div>;
-  if (!c) return <div className="bh"><p className="bh-note">Cargando…</p></div>;
+  if (error && !c) return <div className="bh app-page"><p className="bh-note bh-note--err">{error}</p></div>;
+  if (!c) return <div className="bh app-page"><p className="bh-note">Cargando…</p></div>;
 
   const s = humanState(c);
   const pct = Math.min(100, (Number(c.raisedAmount) / Math.max(1, Number(c.goalAmount))) * 100);
@@ -180,7 +180,7 @@ export function CampaignDetailPage() {
     setSigners((x) => (x.includes(a) ? x.filter((y) => y !== a) : [...x, a]));
 
   return (
-    <div className="bh">
+    <div className="bh app-page">
       <Link to="/app/causes" className="bh-back">← Causas</Link>
       <header style={{ margin: "0.75rem 0 1rem" }}>
         <span className={`bh-state bh-state--${s.cls}`}>{s.label}</span>

@@ -57,11 +57,11 @@ export function ArticleViewPage() {
     }
   }
 
-  if (error && !a) return <div className="bh articles"><p className="bh-note bh-note--err">{error}</p></div>;
-  if (!a) return <div className="bh articles"><p className="bh-note">Cargando…</p></div>;
+  if (error && !a) return <div className="bh app-page articles"><p className="bh-note bh-note--err">{error}</p></div>;
+  if (!a) return <div className="bh app-page articles"><p className="bh-note">Cargando…</p></div>;
 
   return (
-    <div className="bh articles">
+    <div className="bh app-page articles">
       <Link to="/app/articles" className="bh-back">← Artículos</Link>
 
       {a.banner && <div className="article-banner article-view__banner" style={{ backgroundImage: `url(${a.banner})` }} />}

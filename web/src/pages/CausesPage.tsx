@@ -49,7 +49,7 @@ export function CausesPage() {
   }, []);
 
   return (
-    <div className="bh">
+    <div className="bh app-page">
       <header style={{ marginBottom: "1.25rem" }}>
         <p className="bh-eyebrow">Funding ZK</p>
         <h1 className="bh-h1">Causas</h1>

@@ -7,6 +7,15 @@
   color: var(--color-text);
 }
 
+/* Página dentro del shell social: gutter consistente con el feed + ritmo vertical y aire
+   inferior para el nav mobile. Alinea TODAS las pantallas de la plataforma (impeccable). */
+.app-page {
+  padding: var(--space-5) var(--app-gutter) calc(var(--space-7) + var(--safe-bottom));
+}
+.app-page > :first-child {
+  margin-top: 0;
+}
+
 .bh-shell {
   width: 100%;
   max-width: 640px;

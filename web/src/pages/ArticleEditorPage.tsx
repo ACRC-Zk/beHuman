@@ -98,7 +98,7 @@ export function ArticleEditorPage() {
 
   if (!cred) {
     return (
-      <div className="bh articles">
+      <div className="bh app-page articles">
         <div className="bh-card">
           <h2 className="bh-h2">Escribir artículo</h2>
           <p className="bh-p">
@@ -111,7 +111,7 @@ export function ArticleEditorPage() {
   }
 
   return (
-    <div className="bh articles">
+    <div className="bh app-page articles">
       <Link to="/app/articles" className="bh-back">← Artículos</Link>
       <header style={{ margin: "0.75rem 0 1rem" }}>
         <p className="bh-eyebrow">Nuevo artículo</p>
@@ -170,7 +170,7 @@ export function ArticleEditorPage() {
         <h2 className="bh-h2">Anclar on-chain</h2>
         <p className="bh-sub">
           Subir el artículo a la blockchain guarda solo un <strong>hash</strong> (no el contenido):
-          eso lo vuelve <strong>inmutable</strong> y privado. Coné cuánto cuesta antes de publicar.
+          eso lo vuelve <strong>inmutable</strong> y privado. Conocé cuánto cuesta antes de publicar.
         </p>
         <div className="bh-actions">
           <Button variant="secondary" onClick={onCotizar} disabled={!!busy || !valid}>Cotizar</Button>
