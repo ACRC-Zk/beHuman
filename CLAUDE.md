@@ -27,7 +27,7 @@ Proyecto de **dos capas**:
 - **Toolchain ZK: Circom + Groth16** (verificación on-chain más barata, verificador oficial
   de `soroban-examples`). Plan B: Noir/UltraHonk.
 - **Monorepo único** (este repo). Docs separadas en la vault de Obsidian.
-- Nombre de trabajo: **beHuman**. Organización GitHub: **ACRC-Zk**.
+- Nombre de trabajo: **human**. Organización GitHub: **behuman-org**.
 
 ## Estructura (por capas)
 

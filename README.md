@@ -83,4 +83,4 @@ Pendiente de definir (la hackathon requiere repo open-source).
 
 ---
 
-*Organización: [ACRC-Zk](https://github.com/ACRC-Zk) · Hackathon: Stellar Hacks: Real-World ZK*
+*Organización: [behuman-org](https://github.com/behuman-org) · Hackathon: Stellar Hacks: Real-World ZK*

@@ -17,7 +17,7 @@ Texto centralizado en `src/content/site.ts`. Alineado a `README.md`, `CLAUDE.md`
 ## Disclaimers obligatorios
 
 - **Issuer mock** — declarado en hero flow paso 01 y footer
-- **Scaffolding** — producto en desarrollo (hackathon / ACRC-Zk)
+- **Scaffolding** - producto en desarrollo (hackathon / behuman-org)
 
 ## Editar copy
 

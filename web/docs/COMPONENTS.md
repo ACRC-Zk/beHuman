@@ -10,7 +10,7 @@ Barra flotante pill con glassmorphism. Links ancla: `#capas`, `#como-funciona`, 
 
 ### `SiteFooter`
 
-Marca, tagline (ACRC-Zk, hackathon, disclaimer issuer mock), enlaces GitHub y path a docs.
+Marca, tagline (behuman-org, hackathon, disclaimer issuer mock), enlaces GitHub y path a docs.
 
 ## Hero
 

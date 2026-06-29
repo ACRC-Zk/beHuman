@@ -4,7 +4,7 @@ export const en: SiteMessages = {
   siteMeta: {
     name: "human",
     projectName: "beHuman",
-    org: "ACRC-Zk",
+    org: "behuman-org",
     tagline: "Your opinion, without exposing who you are",
     description:
       "Verify your identity once and join a space to share opinions with privacy.",
@@ -168,7 +168,7 @@ export const en: SiteMessages = {
       { label: "Platform", href: "#plataforma" },
       { label: "Quality", href: "#curacion" },
     ],
-    external: [{ label: "GitHub", href: "https://github.com/ACRC-Zk/beHuman" }],
+    external: [{ label: "GitHub", href: "https://github.com/behuman-org/human" }],
     legalPrefix: "©",
     legalSuffix: "human.",
   },

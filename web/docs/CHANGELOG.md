@@ -9,7 +9,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/).
 - **Copy completo del producto** — `src/content/site.ts` + secciones Arquitectura, Plataforma, Curaduría
 - Flujo KYC ampliado a **4 fases** (vault)
 - Tabla comparativa: **7 filas**
-- Footer: ACRC-Zk, hackathon, disclaimer issuer mock
+- Footer: behuman-org, hackathon, disclaimer issuer mock
 
 ### Changed (previo)
 - Hero canvas lee tokens CSS vía `getComputedStyle` (glow + trail naranja)
