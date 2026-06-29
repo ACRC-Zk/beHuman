@@ -6,7 +6,7 @@ import * as StellarSdk from "@stellar/stellar-sdk";
 import { loadAnyCredential } from "../kyc/credentialStore";
 import { contentHashField, generatePlatformProof, platformIdHex } from "../platform/zk2";
 import { createFundedEphemeral } from "../platform/ephemeral";
-import { postTweet, quotePublish, registerIdentity, ContractError } from "../platform/chain2";
+import { postTweet, quotePublish, registerIdentity, initIfNeeded, ContractError } from "../platform/chain2";
 
 export interface Anchored {
   platformId: string;
@@ -32,6 +32,11 @@ export async function anchorText(text: string): Promise<Anchored> {
   const proof = await generatePlatformProof(cred, contentHash);
   const platformId = platformIdHex(proof.publicSignals[1]);
   const kp = await createFundedEphemeral();
+
+  // Asegura que el opinion_board esté inicializado con la raíz del issuer de ESTA credencial
+  // (idempotente: si ya estaba init, no hace nada). Sin esto, un contrato nuevo daría
+  // NotInitialized y uno con otra raíz daría UntrustedIssuer. publicSignals[0] = issuerRoot.
+  await initIfNeeded(kp, proof.publicSignals[0]);
 
   let txHash = "";
   try {
