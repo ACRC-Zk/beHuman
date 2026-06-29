@@ -193,11 +193,33 @@ app.post(
   }),
 );
 
-app.get("/campaigns", (_req, res) => res.json(load().campaigns));
-app.get("/campaigns/:id", (req, res) => {
-  const c = load().campaigns.find((x) => x.id === req.params.id);
-  return c ? res.json(c) : res.status(404).json({ error: "not_found" });
-});
+// Aumenta una campaña con stats derivados (read-only) para la UX: donantes únicos + APY estim.
+async function withStats(c: Campaign, donations: Donation[]): Promise<Campaign> {
+  const wallets = new Set(donations.filter((d) => d.campaignId === c.id).map((d) => d.donorWallet));
+  let estApy: number | undefined;
+  try {
+    estApy = await defindex.apy(c.vaultAddress!);
+  } catch {
+    estApy = undefined; // si el provider de yield no responde, omitimos el dato (no rompe la lista)
+  }
+  return { ...c, donorCount: wallets.size, estApy };
+}
+
+app.get(
+  "/campaigns",
+  wrap(async (_req, res) => {
+    const s = load();
+    res.json(await Promise.all(s.campaigns.map((c) => withStats(c, s.donations))));
+  }),
+);
+app.get(
+  "/campaigns/:id",
+  wrap(async (req, res) => {
+    const s = load();
+    const c = s.campaigns.find((x) => x.id === req.params.id);
+    return c ? res.json(await withStats(c, s.donations)) : bad(404, "not_found");
+  }),
+);
 
 // ─── Donación anónima (gateada por personhood) ────────────────────────────────
 app.post(
