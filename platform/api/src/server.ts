@@ -448,7 +448,8 @@ app.post("/moderation/resolve", (req, res) => {
   res.json({ ok: removed });
 });
 
-const port = Number(process.env.PLATFORM_API_PORT ?? 8788);
+// Render (y otros PaaS) asignan el puerto vía $PORT; en local usamos PLATFORM_API_PORT.
+const port = Number(process.env.PORT ?? process.env.PLATFORM_API_PORT ?? 8788);
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   app.listen(port, () => console.log(`beHuman platform API en :${port}`));
 }
