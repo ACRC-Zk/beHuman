@@ -1,9 +1,9 @@
-# beHuman
+# human
 
 > **KYC con Zero-Knowledge sobre Stellar** — *proof of personhood*: probás que sos una
 > persona real y **única** sin revelar quién sos. Monorepo del producto.
 
-beHuman tiene **dos capas**: una de **identidad** (KYC-ZK, *proof of personhood*) y una de
+human tiene **dos capas**: una de **identidad** (KYC-ZK, *proof of personhood*) y una de
 **aplicación** (plataforma de opinión verificada). Una persona verifica su identidad una vez
 (off-chain, sin que su PII toque la cadena), obtiene una identidad **única y anónima**
 on-chain, y eso le habilita opinar y publicar como **humano real y único** sin exponer quién
@@ -17,7 +17,7 @@ es. Las dos capas se unen por un solo punto: **`is_verified(address)`**.
 ## 🗂️ Estructura del monorepo (por capas)
 
 ```text
-beHuman/
+human/
 ├── identity/                 # ── CAPA 1 · KYC con ZK ──
 │   ├── circuits/             #   Circom — circuito kyc
 │   ├── contracts/            #   Soroban — kyc_verifier  ← EL PUENTE (is_verified)
@@ -83,4 +83,4 @@ Pendiente de definir (la hackathon requiere repo open-source).
 
 ---
 
-*Organización: [behuman-org](https://github.com/behuman-org) · Hackathon: Stellar Hacks: Real-World ZK*
+*Organización: [behuman-org](https://github.com/behuman-org) · Hackathon: Stellar PULSO Hackathon*
