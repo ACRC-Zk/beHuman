@@ -17,12 +17,16 @@ let loaded = false;
 // decodificar/OCR: la detección de caras y el OCR no necesitan más que ~1280px.
 const MAX_DIM = Number(process.env.IMAGE_MAX_DIM) > 0 ? Number(process.env.IMAGE_MAX_DIM) : 1280;
 
-/** Reescala (manteniendo aspecto, sin agrandar) y normaliza orientación EXIF. Idempotente. */
-export async function fitImage(image: Buffer): Promise<Buffer> {
+/**
+ * Reescala (manteniendo aspecto, sin agrandar) y normaliza orientación EXIF. Idempotente.
+ * `maxDim` permite usar más resolución para la pasada de OCR (lee mejor el nº del DNI) que
+ * para la detección de caras, sin volver a OOM en instancias chicas si se baja por env.
+ */
+export async function fitImage(image: Buffer, maxDim: number = MAX_DIM): Promise<Buffer> {
   try {
     return await sharp(image)
       .rotate() // respeta la orientación EXIF (fotos de celular)
-      .resize({ width: MAX_DIM, height: MAX_DIM, fit: "inside", withoutEnlargement: true })
+      .resize({ width: maxDim, height: maxDim, fit: "inside", withoutEnlargement: true })
       .toBuffer();
   } catch {
     return image; // si sharp falla, seguimos con el original (mejor que romper el flujo)

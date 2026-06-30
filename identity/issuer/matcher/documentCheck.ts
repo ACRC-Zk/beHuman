@@ -48,6 +48,16 @@ function minTokens(): number {
 // por el match facial DNI↔selfie + liveness (el núcleo de prueba de persona).
 const OCR_ENABLED = process.env.OCR_ENABLED !== "false";
 
+// El cotejo de datos↔OCR es una SEÑAL ANTI-FRAUDE BLANDA, no el gate. El gate real es el
+// match facial DNI↔selfie + liveness. Por defecto NO bloquea (evita falsos rechazos sobre
+// OCR ruidoso de fotos de celular). Con STRICT_DATA_CHECK=true, una contradicción FUERTE y
+// clara (p. ej. el OCR lee con claridad OTRO país conocido) sí puede rebotar.
+const STRICT_DATA_CHECK = process.env.STRICT_DATA_CHECK === "true";
+
+// El nº del DNI es texto chico: el OCR necesita más resolución que la detección de caras.
+// En instancias con RAM (HF Spaces 16GB) subimos la pasada de OCR; bajable por env si hiciera falta.
+const OCR_MAX_DIM = Number(process.env.OCR_MAX_DIM) > 0 ? Number(process.env.OCR_MAX_DIM) : 2000;
+
 let workerP: Promise<Worker> | null = null;
 async function getWorker(): Promise<Worker> {
   if (!workerP) workerP = createWorker("spa");
@@ -56,6 +66,85 @@ async function getWorker(): Promise<Worker> {
 
 function normalize(s: string): string {
   return s.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+// ─── Tolerancia a ruido de OCR ─────────────────────────────────────────────────
+// Confusiones típicas letra↔dígito del OCR (sobre texto YA en mayúsculas).
+const LETTER_TO_DIGIT: Record<string, string> = {
+  O: "0", Q: "0", D: "0", I: "1", L: "1", "|": "1", Z: "2", S: "5", B: "8", G: "6",
+};
+
+/** Convierte un token "casi numérico" a solo dígitos, mapeando confusiones del OCR. */
+function tokenToDigits(token: string): string {
+  return token
+    .toUpperCase()
+    .split("")
+    .map((ch) => LETTER_TO_DIGIT[ch] ?? ch)
+    .join("")
+    .replace(/\D/g, "");
+}
+
+/** Distancia de edición (Levenshtein) entre dos strings cortos. */
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(
+        prev[j] + 1,
+        cur[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+// Un "token numérico" es solo dígitos + confusiones conocidas + separadores (puntos/barras).
+const NUMERIC_TOKEN = /^[0-9OISBZGQDL.|]+$/i;
+
+/**
+ * Extrae candidatos de nº de documento (7-8 dígitos) del texto OCR, tolerando confusiones
+ * letra↔dígito y nº partidos por espacios (12 345 678). Trabaja por palabras y solo une tokens
+ * 100% "numéricos" (no fusiona letras de etiquetas como DOCUMENTO/DNI con el número).
+ */
+export function extractDocNumbers(text: string): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const out = new Set<string>();
+  for (let i = 0; i < words.length; i++) {
+    let joined = "";
+    for (let span = 0; span < 3 && i + span < words.length; span++) {
+      const w = words[i + span];
+      if (!NUMERIC_TOKEN.test(w)) break; // corta ante la primera palabra no-numérica
+      joined += w;
+      const digits = tokenToDigits(joined);
+      if (digits.length >= 7 && digits.length <= 8) out.add(digits);
+    }
+  }
+  return [...out];
+}
+
+/** Extrae años (19xx/20xx) del texto OCR, tolerando confusiones letra↔dígito. */
+export function extractYears(text: string): number[] {
+  const digitText = text.replace(/[OISBZGQDL|]/gi, (c) => LETTER_TO_DIGIT[c.toUpperCase()] ?? c);
+  return [...new Set((digitText.match(/(?:19|20)\d{2}/g) ?? []).map(Number))];
+}
+
+/** ¿El nº declarado coincide (fuzzy) con algún candidato del OCR? Levenshtein ≤1 + inclusión. */
+function docNumberMatches(declared: string, candidates: string[]): boolean {
+  return candidates.some(
+    (n) => n === declared || n.includes(declared) || declared.includes(n) || levenshtein(n, declared) <= 1,
+  );
+}
+
+/** ¿El año declarado coincide (fuzzy) con algún año del OCR? Tolera 1 dígito mal leído. */
+function yearMatches(declared: number, years: number[]): boolean {
+  const ds = String(declared);
+  return years.some((y) => y === declared || levenshtein(String(y), ds) <= 1);
 }
 
 /** Resultado del análisis OCR + cara de una imagen de documento. */
@@ -69,35 +158,36 @@ export interface DocAnalysis {
   years: number[]; // años de 4 dígitos detectados (19xx/20xx)
 }
 
-/** OCR + detección de cara + extracción de candidatos (una sola pasada). */
+/** OCR + detección de cara + extracción de candidatos. */
 async function analyze(image: Buffer): Promise<DocAnalysis> {
   await loadModels(modelsPath());
-  // Reescalar una sola vez y reusar para cara + OCR (evita decodificar la imagen full-res
-  // dos veces; clave para no quedarnos sin memoria en instancias chicas).
-  const small = await fitImage(image);
-  const hasFace = !!(await detectFace(small));
+  // La detección de caras no necesita alta resolución (y limita memoria).
+  const faceImg = await fitImage(image);
+  const hasFace = !!(await detectFace(faceImg));
 
   // Sin OCR devolvemos solo la señal de cara (el resto neutro); los validadores lo contemplan.
   if (!OCR_ENABLED) {
     return { hasFace, text: "", tokens: 0, keywordsFound: 0, hasDocNumber: false, docNumbers: [], years: [] };
   }
 
+  // El OCR del nº usa MÁS resolución (texto chico). Pasada aparte (tenemos RAM en HF).
+  const ocrImg = await fitImage(image, OCR_MAX_DIM);
   const worker = await getWorker();
-  const { data } = await worker.recognize(small);
+  const { data } = await worker.recognize(ocrImg);
   const text = normalize(data.text ?? "");
 
   const tokens = text.split(/\s+/).filter((t) => t.replace(/[^A-Z0-9]/g, "").length >= 3).length;
   const keywordsFound = ID_KEYWORDS.filter((k) => text.includes(k)).length;
-  const docMatches = text.match(/\b\d{1,2}\.?\d{3}\.?\d{3}\b/g) ?? [];
-  const docNumbers = docMatches.map((s) => s.replace(/\D/g, "")).filter((n) => n.length >= 7 && n.length <= 8);
-  const years = (text.match(/\b(?:19|20)\d{2}\b/g) ?? []).map(Number);
+  // Extracción tolerante a ruido (recupera nº/años que el OCR leyó "sucios").
+  const docNumbers = extractDocNumbers(text);
+  const years = extractYears(text);
 
   return {
     hasFace,
     text,
     tokens,
     keywordsFound,
-    hasDocNumber: docMatches.length > 0,
+    hasDocNumber: docNumbers.length > 0,
     docNumbers,
     years,
   };
@@ -114,6 +204,8 @@ export interface DocumentCheck {
   keywordsFound: number;
   tokens: number;
   hasDocNumber: boolean;
+  docNumbersFound: number; // cuántos nº recuperó el OCR (PII-free: solo el conteo)
+  yearsFound: number; // cuántos años detectó el OCR (PII-free)
 }
 
 /** Valida que `image` sea un documento de identidad (texto OCR + cara). */
@@ -131,6 +223,8 @@ export async function validateDocument(image: Buffer): Promise<DocumentCheck> {
     keywordsFound: a.keywordsFound,
     tokens: a.tokens,
     hasDocNumber: a.hasDocNumber,
+    docNumbersFound: a.docNumbers.length,
+    yearsFound: a.years.length,
   };
 }
 
@@ -143,47 +237,65 @@ export interface DeclaredData {
 }
 
 export interface DataCrossCheck {
-  ok: boolean;
+  ok: boolean; // true si no hay NINGUNA discrepancia blanda (informativo)
   mismatches: string[]; // "doc_number" | "birth_year" | "country" (nombres, NO valores)
+  contradiction: boolean; // contradicción FUERTE y clara (solo bloquea con STRICT_DATA_CHECK)
 }
 
 /**
  * Coteja los datos declarados contra el OCR del documento. PURA (testeable sin OCR).
- * - doc_number: el nº declarado debe aparecer entre los nº detectados en el DNI.
- * - birth_year: el año declarado debe aparecer entre los años detectados.
- * - country: si el país declarado no aparece pero SÍ aparece otro país conocido → mismatch.
- *   (si no se detecta ningún país, no se penaliza para no rebotar por ruido de OCR).
+ * Filosofía: señal anti-fraude BLANDA, tolerante al ruido del OCR. NO penaliza cuando el OCR
+ * no pudo leer un campo (campo vacío ≠ contradicción); usa matching fuzzy (confusiones de
+ * dígitos, Levenshtein ≤1). Solo marca `contradiction` ante evidencia FUERTE (el OCR leyó con
+ * claridad OTRO país conocido distinto al declarado).
+ * - doc_number: si el OCR recuperó algún nº y NINGUNO matchea (fuzzy) el declarado → mismatch blando.
+ * - birth_year: si el OCR detectó años y NINGUNO matchea (fuzzy) el declarado → mismatch blando.
+ * - country: si el declarado no aparece pero SÍ aparece otro país conocido → mismatch + contradicción.
  */
 export function crossCheckData(a: DocAnalysis, d: DeclaredData): DataCrossCheck {
   const mismatches: string[] = [];
+  let contradiction = false;
 
+  // doc_number (blando): solo si el OCR recuperó al menos un nº candidato (si no, no comparamos).
   const declaredDoc = String(d.docId ?? "").replace(/\D/g, "");
-  const docOk =
-    declaredDoc.length >= 7 &&
-    a.docNumbers.some((n) => n === declaredDoc || n.includes(declaredDoc) || declaredDoc.includes(n));
-  if (!docOk) mismatches.push("doc_number");
+  const candidates = [...new Set([...a.docNumbers.map((n) => n.replace(/\D/g, "")), ...extractDocNumbers(a.text)])]
+    .filter((n) => n.length >= 7 && n.length <= 8);
+  if (declaredDoc.length >= 7 && candidates.length > 0 && !docNumberMatches(declaredDoc, candidates)) {
+    mismatches.push("doc_number");
+  }
 
-  if (!a.years.includes(Number(d.birthYear))) mismatches.push("birth_year");
+  // birth_year (blando): solo si el OCR detectó algún año.
+  const years = a.years.length ? a.years : extractYears(a.text);
+  if (Number.isFinite(d.birthYear) && years.length > 0 && !yearMatches(Number(d.birthYear), years)) {
+    mismatches.push("birth_year");
+  }
 
+  // country: única señal potencialmente FUERTE (el OCR leyó claramente otro país conocido).
   const kw = COUNTRY_KEYWORDS[d.countryCode] ?? [];
   if (kw.length && !kw.some((k) => a.text.includes(k))) {
     const otherPresent = Object.entries(COUNTRY_KEYWORDS).some(
       ([code, ks]) => Number(code) !== d.countryCode && ks.some((k) => a.text.includes(k)),
     );
-    if (otherPresent) mismatches.push("country");
+    if (otherPresent) {
+      mismatches.push("country");
+      contradiction = true;
+    }
   }
 
-  return { ok: mismatches.length === 0, mismatches };
+  return { ok: mismatches.length === 0, mismatches, contradiction };
 }
 
 export interface DataCheck extends DocumentCheck {
-  dataOk: boolean;
+  dataOk: boolean; // ¿coincidieron los datos? (informativo; ver `ok` para si rebota)
   mismatches: string[];
+  contradiction: boolean; // contradicción fuerte detectada (bloquea solo en modo STRICT)
 }
 
 /**
- * Valida que sea un DNI Y que los datos declarados coincidan. Una sola pasada de OCR.
- * `ok` es true solo si es un documento válido (cara + texto) Y los datos coinciden.
+ * Valida que sea un DNI y coteja los datos declarados. El cotejo es una SEÑAL BLANDA: por
+ * defecto NO bloquea (el gate real es cara + liveness en /enroll). `ok` es false solo si el
+ * documento no es válido (sin cara) o —en modo STRICT— hay una contradicción fuerte y clara.
+ * `dataOk`/`mismatches` se devuelven como información (para flag/moderación y diagnóstico).
  */
 export async function validateDocumentData(image: Buffer, declared: DeclaredData): Promise<DataCheck> {
   const a = await analyze(image);
@@ -193,34 +305,26 @@ export async function validateDocumentData(image: Buffer, declared: DeclaredData
   if (!docLike) reasons.push("not_an_id_document");
   const docValid = a.hasFace && docLike;
 
-  // Sin OCR no hay cotejo anti-fraude: aceptamos los datos declarados (solo importa la cara).
-  if (!OCR_ENABLED) {
-    return {
-      ok: docValid,
-      reasons,
-      hasFace: a.hasFace,
-      keywordsFound: a.keywordsFound,
-      tokens: a.tokens,
-      hasDocNumber: a.hasDocNumber,
-      dataOk: true,
-      mismatches: [],
-    };
-  }
+  const cross = OCR_ENABLED
+    ? crossCheckData(a, declared)
+    : { ok: true, mismatches: [] as string[], contradiction: false };
 
-  const cross = crossCheckData(a, declared);
-  // Si ni siquiera pudimos leer nº de documento ni años, no se puede cotejar → DNI ilegible.
-  if (docValid && a.docNumbers.length === 0 && a.years.length === 0) {
-    reasons.push("document_unreadable");
-  }
+  // No bloqueante por defecto: el cotejo de datos NO rebota a un usuario legítimo aunque el
+  // OCR sea ruidoso. Solo en STRICT una contradicción fuerte (otro país claro) puede rebotar.
+  const blockedByData = STRICT_DATA_CHECK && cross.contradiction;
+  if (blockedByData) reasons.push("data_contradiction");
 
   return {
-    ok: docValid && cross.ok && !reasons.includes("document_unreadable"),
+    ok: docValid && !blockedByData,
     reasons,
     hasFace: a.hasFace,
     keywordsFound: a.keywordsFound,
     tokens: a.tokens,
     hasDocNumber: a.hasDocNumber,
+    docNumbersFound: a.docNumbers.length,
+    yearsFound: a.years.length,
     dataOk: cross.ok,
     mismatches: cross.mismatches,
+    contradiction: cross.contradiction,
   };
 }

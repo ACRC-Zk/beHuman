@@ -14,7 +14,7 @@ import express from "express";
 import multer from "multer";
 import type { EnrollmentResult, MatchResult } from "@behuman/shared";
 import { getProvider } from "./provider.js";
-import { validateDocument, validateDocumentData } from "./documentCheck.js";
+import { validateDocument, validateDocumentData, type DeclaredData } from "./documentCheck.js";
 import { enrollVerifiedHuman } from "../src/index.js";
 
 // Cargar .env desde la raíz del repo (matcher/ está en identity/issuer/matcher).
@@ -45,6 +45,24 @@ app.get("/health", (_req, res) => {
 
 type MulterFiles = Record<string, Express.Multer.File[]>;
 
+const KNOWN_COUNTRIES = new Set([32, 76, 152, 858]); // ISO numérico (coincide con el circuito)
+
+/**
+ * Valida el payload de datos declarados (multipart → strings). Devuelve tipos correctos o un
+ * error CLARO; así un valor mal formado nunca se convierte en NaN que marca un mismatch falso.
+ */
+function parseDeclared(body: unknown): { value: DeclaredData } | { error: string } {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const birthYear = Number(b.birthYear);
+  const docId = String(b.docId ?? "").trim();
+  const countryCode = Number(b.countryCode);
+  const nowYear = new Date().getFullYear();
+  if (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > nowYear) return { error: "invalid_birthYear" };
+  if (docId.replace(/\D/g, "").length < 6) return { error: "invalid_docId" };
+  if (!KNOWN_COUNTRIES.has(countryCode)) return { error: "invalid_countryCode" };
+  return { value: { birthYear, docId, countryCode } };
+}
+
 // Valida que la imagen subida sea un documento de identidad (DNI), no una foto cualquiera.
 // El frontend habilita el escaneo de cara solo si esto da ok.
 app.post("/document", upload.single("document"), async (req, res) => {
@@ -68,14 +86,18 @@ app.post("/document", upload.single("document"), async (req, res) => {
 app.post("/verify-data", upload.single("document"), async (req, res) => {
   const document = req.file?.buffer;
   if (!document) return res.status(400).json({ error: "missing_document" });
-  const birthYear = Number(req.body?.birthYear);
-  const docId = String(req.body?.docId ?? "");
-  const countryCode = Number(req.body?.countryCode);
-  if (!birthYear || !docId || !countryCode) return res.status(400).json({ error: "missing_fields" });
+
+  // Validación de payload: tipos correctos → error CLARO (nunca un mismatch silencioso por NaN).
+  const parsed = parseDeclared(req.body);
+  if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+
   try {
-    const check = await validateDocumentData(document, { birthYear, docId, countryCode });
+    const check = await validateDocumentData(document, parsed.value);
+    // Log PII-free + contadores para diagnosticar futuros casos (cuántos nº/años leyó el OCR).
     console.log(
-      `[verify-data] ok=${check.ok} dataOk=${check.dataOk} mismatches=${check.mismatches.join(",")} reasons=${check.reasons.join(",")}`,
+      `[verify-data] ok=${check.ok} dataOk=${check.dataOk} contradiction=${check.contradiction} ` +
+        `mismatches=${check.mismatches.join(",")} ocrNums=${check.docNumbersFound} ocrYears=${check.yearsFound} ` +
+        `keywords=${check.keywordsFound} reasons=${check.reasons.join(",")}`,
     );
     res.json({ ok: check.ok, reasons: check.reasons, mismatches: check.mismatches });
   } catch (err) {
