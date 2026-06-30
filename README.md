@@ -68,18 +68,14 @@ Ver targets disponibles en el [`Makefile`](./Makefile).
 ## 🧱 Estado
 
 - [x] Estructura del monorepo (por capas)
-- [ ] **CAPA 1** — Circuito `kyc.circom` (`identity/circuits/`)
-- [ ] **CAPA 1** — Contrato `kyc_verifier` (`identity/contracts/`)
-- [ ] **CAPA 1** — Issuer mock (`identity/issuer/`)
-- [ ] **CAPA 2** — Contrato `opinion_board` (`platform/contracts/`)
-- [ ] **CAPA 2** — Backend `api` + curaduría (`platform/api`, `platform/curation`)
-- [ ] SDK + tipos compartidos (`packages/`)
-- [ ] Frontend React (`web/`)
-- [ ] Deploy testnet + demo E2E (`scripts/`)
-
-## 📄 Licencia
-
-Pendiente de definir (la hackathon requiere repo open-source).
+- [x] **CAPA 1** — Circuito `kyc.circom` (`identity/circuits/`)
+- [x] **CAPA 1** — Contrato `kyc_verifier` (`identity/contracts/`)
+- [x] **CAPA 1** — Issuer mock (`identity/issuer/`)
+- [x] **CAPA 2** — Contrato `opinion_board` (`platform/contracts/`)
+- [x] **CAPA 2** — Backend `api` + curaduría (`platform/api`, `platform/curation`)
+- [x] SDK + tipos compartidos (`packages/`)
+- [x] Frontend React (`web/`)
+- [x] Deploy testnet + demo E2E (`scripts/`)
 
 ---
 
